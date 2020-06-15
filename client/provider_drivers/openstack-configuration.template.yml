@@ -1,0 +1,12 @@
+openstack_auth_url: {}
+openstack_username: {}
+openstack_password: {}
+openstack_tenant: {}
+openstack_region: {}
+openstack_instance_type: m1.1core
+openstack_image_id: {}
+openstack_keypair_name: ccube-openstack
+
+ssh_username: ubuntu
+ssh_private_key_file: {}
+# TODO 104: extend openstack driver with template
