@@ -36,12 +36,12 @@ def create(context, provider_name, configuration_file_path):
     """
     Create and setup the cloud environment.
 
-    :param context: the click cli context, automatically passed by cli
+    :param context: the click cli context, automatically passed by cli.
 
-    :param provider_name: the cloud provider name
+    :param provider_name: the cloud provider name.
     :type provider_name: str
 
-    :param configuration_file_path: the path to the PGA configuration file
+    :param configuration_file_path: the path to the PGA configuration file.
     :type configuration_file_path: str
     """
 
@@ -61,9 +61,9 @@ def create(context, provider_name, configuration_file_path):
 @click.argument("host_ip", type=str)
 def init(host_ip):
     """
-    Initialize the PGA Manager
+    Initialize the PGA Manager.
 
-    :param host_ip: the IP address of a host in the cloud
+    :param host_ip: the IP address of a host in the cloud.
     :type host_ip: str
     """
     click.echo("cloud init " + host_ip)  # TODO 102: implement manager initialization via cli
@@ -74,9 +74,9 @@ def init(host_ip):
 @click.argument("host_ip", type=str)
 def reset(host_ip):
     """
-    Reset the cloud by removing the PGA Manager
+    Reset the cloud by removing the PGA Manager.
 
-    :param host_ip: the IP address of a host in the cloud
+    :param host_ip: the IP address of a host in the cloud.
     :type host_ip: str
     """
     click.echo("cloud reset " + host_ip)  # TODO 105: extend client cli with cloud teardown
@@ -86,7 +86,7 @@ def reset(host_ip):
 @click.pass_obj
 def destroy():
     """
-    Remove the cloud environment and all its PGA contents (forcefully)
+    Remove the cloud environment and all its PGA contents.
     """
     click.echo("cloud destroy")  # TODO 105: extend client cli with cloud teardown
 
@@ -101,12 +101,12 @@ def pga():
 @click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=True)
 def init(manager_ip, configuration_file_path):
     """
-    Initialize a new PGA run
+    Initialize a new PGA run.
 
-    :param manager_ip: the IP address of the PGA Manager node
+    :param manager_ip: the IP address of the PGA Manager node.
     :type manager_ip: str
 
-    :param configuration_file_path: the path to the PGA configuration file
+    :param configuration_file_path: the path to the PGA configuration file.
     :type configuration_file_path: str
 
     :return: generated PGA id
@@ -125,9 +125,9 @@ def init(manager_ip, configuration_file_path):
 @click.argument("pga_id", type=int)
 def run(pga_id):
     """
-    Start computation of given PGA
+    Start computation of given PGA.
 
-    :param pga_id: the id of the PGA to run, retrieved from initialization
+    :param pga_id: the id of the PGA to run, retrieved from initialization.
     :type pga_id: int
     """
     click.echo("pga run " + str(pga_id))  # TODO 106: extend client cli with runner start
@@ -137,9 +137,10 @@ def run(pga_id):
 @click.argument("pga_id", type=int)
 def monitor(pga_id):
     """
-    Monitor computation statistics of given PGA: currently fittest individual, generation, computation time, etc.
+    Monitor computation statistics of given PGA.
+    Currently fittest individual, generation, computation time, etc.
 
-    :param pga_id: the id of the PGA to monitor, retrieved from initialization
+    :param pga_id: the id of the PGA to monitor, retrieved from initialization.
     :type pga_id: int
     """
     click.echo("pga monitor " + str(pga_id))  # TODO 107: extend client cli with runner manipulation
@@ -149,9 +150,9 @@ def monitor(pga_id):
 @click.argument("pga_id", type=int)
 def pause(pga_id):
     """
-    Pause given PGA after finishing the current generation
+    Pause given PGA after finishing the current generation.
 
-    :param pga_id: the id of the PGA to pause, retrieved from initialization
+    :param pga_id: the id of the PGA to pause, retrieved from initialization.
     :type pga_id: int
     """
     click.echo("pga pause " + str(pga_id))  # TODO 107: extend client cli with runner manipulation
@@ -161,9 +162,9 @@ def pause(pga_id):
 @click.argument("pga_id", type=int)
 def stop(pga_id):
     """
-    Stop computation of given PGA and tear down (forcefully)
+    Stop computation of given PGA and remove it.
 
-    :param pga_id: the id of the PGA to monitor, retrieved from initialization
+    :param pga_id: the id of the PGA to monitor, retrieved from initialization.
     :type pga_id: int
     """
     click.echo("pga stop " + str(pga_id))  # TODO 108: extend client cli with runner teardown
