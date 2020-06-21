@@ -8,7 +8,7 @@ requirements = [
 
 setup(
     name="client",
-    author="Janik Lüchinger",
+    author="Janik Luechinger",
     author_email="janik.luechinger@uzh.ch",
     description="script for PGA client interaction",
     packages=find_packages(),

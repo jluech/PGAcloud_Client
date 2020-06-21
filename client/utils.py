@@ -12,9 +12,9 @@ def execute_command(
         logger,
         livestream=False
 ):
-    logger_prefix = ''
+    logger_prefix = ""
     if executor:
-        logger_prefix = executor + ': '
+        logger_prefix = executor + ": "
 
     process = subprocess.Popen(
         command,
@@ -25,18 +25,17 @@ def execute_command(
         shell=True,
     )
 
-    logger.debug(logger_prefix + 'command: ' + command)
+    logger.debug(logger_prefix + "command: " + command)
 
-    stdout = ''
+    stdout = ""
     for line in iter(process.stdout.readline, b''):
-        line = str(line, 'utf-8')
+        line = str(line, "utf-8")
         stdout += line
 
         if livestream:
             sys.stdout.write(line)
-            sys.stderr.write(line)
         else:
-            logger.debug(logger_prefix + 'command output: ' + line.rstrip())
+            logger.debug(logger_prefix + "command output: " + line.rstrip())
 
     return_code = process.wait()
 

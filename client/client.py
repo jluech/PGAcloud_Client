@@ -1,3 +1,5 @@
+import os
+
 import click
 import logbook
 
@@ -58,23 +60,33 @@ def create(context, provider_name, configuration_file_path):
 
 @cloud.command()
 @click.pass_obj
-@click.argument("host_ip", type=str)
-def init(host_ip):
+def init(context):
     """
     Initialize the PGA Manager.
 
-    :param host_ip: the IP address of a host in the cloud.
-    :type host_ip: str
+    :param context: the click cli context, automatically passed by cli.
     """
-    click.echo("cloud init " + host_ip)  # TODO 102: implement manager initialization via cli
+    if context.orchestrator == "docker":
+        utils.execute_command(
+            command=os.getcwd() + "\\client\\docker-machine_ssh_docker_run.sh -i jluech/pga-cloud-manager",
+            working_directory=os.curdir,
+            environment_variables=None,
+            executor=None,
+            logger=logger,
+            livestream=True
+        )
+    else:
+        print("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
 
 
 @cloud.command()
 @click.pass_obj
 @click.argument("host_ip", type=str)
-def reset(host_ip):
+def reset(context, host_ip):
     """
     Reset the cloud by removing the PGA Manager.
+
+    :param context: the click cli context, automatically passed by cli.
 
     :param host_ip: the IP address of a host in the cloud.
     :type host_ip: str
@@ -84,9 +96,11 @@ def reset(host_ip):
 
 @cloud.command()
 @click.pass_obj
-def destroy():
+def destroy(context):
     """
     Remove the cloud environment and all its PGA contents.
+
+    :param context: the click cli context, automatically passed by cli.
     """
     click.echo("cloud destroy")  # TODO 105: extend client cli with cloud teardown
 
