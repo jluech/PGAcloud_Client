@@ -8,6 +8,7 @@ from client import utils
 from client.provider_drivers.vSphere_driver import VSphereDockerDriver
 
 logger = logbook.Logger('client')
+http = requests.sessions.Session()
 
 CLIENT_CLI_CONTEXT_FILE = os.getcwd() + "\\client\\cli_context.yml"
 CLIENT_CLI_CONTEXT_KEYS = ["orchestrator", "master_ip", "master_port"]
@@ -15,8 +16,6 @@ CLIENT_CLI_CONTEXT_DEFAULTS = {
     "orchestrator": "docker",
     "master_port": 5000
 }
-
-# TODO #104: 'client pga init' can execute but raises some exception. check this out in detail
 
 
 @click.group()
@@ -230,9 +229,9 @@ def pga():
 @click.pass_context
 @click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=True)
 @click.option("--manager-ip", "-m", "manager_ip", type=str, required=False)
-def init(ctx, configuration_file_path, manager_ip):
+def create(ctx, configuration_file_path, manager_ip):
     """
-    Initialize a new PGA run.
+    Create a new PGA run.
 
     :param configuration_file_path: the path to the PGA configuration file.
             If not supplied, the default configuration will be run.
@@ -245,11 +244,8 @@ def init(ctx, configuration_file_path, manager_ip):
 
     :return: generated PGA id
     """
-    click.echo("pga init {} -- {}".format(configuration_file_path, manager_ip))
-
     # Retrieves the configuration file
     configuration = get_configuration(configuration_file_path)
-    print(configuration)
 
     if not manager_ip:
         if not ctx.meta["master_ip"]:
@@ -258,17 +254,12 @@ def init(ctx, configuration_file_path, manager_ip):
                             "Type 'client config master-ip --help' for more details.")
         manager_ip = ctx.meta["master_ip"]
 
-    response = requests.post("https://{}:{}/pga".format(manager_ip, ctx.meta["master_port"]))
-    print(response)
-    json_obj = response.json()
-    print(json_obj)
+    response = http.post("http://{}:{}/pga".format(manager_ip, ctx.meta["master_port"]), verify=False)
+    json_response = response.json()
+    pga_id = json_response["id"]
 
-    print(json_obj.id)
-    print(response.content.id)
-
-    pga_id = 1
     click.echo("Initialized new PGA with id: {}".format(pga_id))  # id is generated
-    return pga_id  # TODO 103: extend client cli with runner creation
+    return pga_id
 
 
 @pga.command()
@@ -332,15 +323,15 @@ def get_driver(provider_name, orchestrator, configuration, logger):
     if provider_name == "amazon":
         # return AmazonCloudProviderDriver(configuration, logger)
         click.echo("Could not find 'amazon' driver, falling back to 'vsphere' docker driver")
-        return VSphereDockerDriver(configuration, logger)  # TODO 104: implement Amazon driver
+        return VSphereDockerDriver(configuration, logger)  # TODO 201: implement Amazon driver
     elif provider_name == "openstack":
         # return OpenStackCloudProviderDriver(configuration, logger)
         click.echo("Could not find 'openstack' driver, falling back to 'vsphere' docker driver")
-        return VSphereDockerDriver(configuration, logger)  # TODO 104: implement Openstack driver
+        return VSphereDockerDriver(configuration, logger)  # TODO 201: implement Openstack driver
     elif provider_name == "virtualbox":
         # return VirtualboxProviderDriver(logger)
         click.echo("Could not find 'virtualbox' driver, falling back to 'vsphere' docker driver")
-        return VSphereDockerDriver(configuration, logger)  # TODO 104: implement Virtualbox driver
+        return VSphereDockerDriver(configuration, logger)  # TODO 201: implement Virtualbox driver
     elif provider_name == "vsphere":
         if orchestrator == "docker":
             return VSphereDockerDriver(configuration, logger)
