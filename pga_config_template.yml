@@ -1,0 +1,34 @@
+# Predefined models: "Master-Slave" and "Island". Declare custom models representing one generation cycle.
+# Use "/" as separator and first/last image being the runner, e.g., "RUN/SEL/CO/MUT/FE/RUN"
+model: "Master-Slave"
+
+# List all images of containers involved, including their maximum allowed scaling.
+# Those in uppercase are predefined default operators.
+images: {
+  RUN:  {image: "", scaling: 1}
+  INIT: {image: "", scaling: 1}
+  SEL:  {image: "", scaling: 1}
+  CO:   {image: "", scaling: 1}
+  MUT:  {image: "", scaling: 1}
+  FE:   {image: "", scaling: 3}
+}
+
+# Settings for providing an initial population.
+population: {
+  use_initial_population: True
+  population_file_path: ""
+}
+
+# Properties for PGA execution. Define at least the predefined four, but can also include properties for custom operators.
+properties: {
+  use_initializer: False
+  mutation_rate: 0.3
+  crossover_rate: 0.5
+  elitism_rate: 0.05
+}
+
+# Define here any custom file paths. Use the following scheme <unique_key>: "<absolute_file_path>"
+# Do NOT use the key "population" for it will be used for the initial population file defined above.
+custom_files: {
+
+}
