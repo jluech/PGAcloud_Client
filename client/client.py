@@ -2,21 +2,113 @@ import os
 
 import click
 import logbook
+import requests
 
 from client import utils
 from client.provider_drivers.vSphere_driver import VSphereDockerDriver
 
-logger = logbook.Logger('orchestrator')
+logger = logbook.Logger('client')
 
+CLIENT_CLI_CONTEXT_FILE = os.getcwd() + "\\client\\cli_context.yml"
+CLIENT_CLI_CONTEXT_KEYS = ["orchestrator", "master_ip", "master_port"]
+CLIENT_CLI_CONTEXT_DEFAULTS = {
+    "orchestrator": "docker",
+    "master_port": 5000
+}
 
-class Context(object):
-    def __init__(self, orchestrator):
-        self.orchestrator = orchestrator
+# TODO: split changes into two commits: one for implementing the context file, and one for cli changes
+# TODO: 'client pga init' can execute but raises some exception. check this out in detail
 
 
 @click.group()
-def client():
+@click.pass_context
+def client(ctx):
+    stored_context = utils.read_context(CLIENT_CLI_CONTEXT_FILE)
+
+    for key in CLIENT_CLI_CONTEXT_KEYS:
+        if not stored_context.get(key):
+            if CLIENT_CLI_CONTEXT_DEFAULTS.keys().__contains__(key):
+                ctx.meta[key] = CLIENT_CLI_CONTEXT_DEFAULTS[key]
+            else:
+                ctx.meta[key] = None
+        else:
+            ctx.meta[key] = stored_context.get(key)
+
+
+@client.group()
+def config():
     pass
+
+
+@config.command()
+@click.pass_context
+@click.argument("ip", type=str)
+def master_ip(ctx, ip):
+    """
+        Update the config for the master host ip address in the cloud.
+
+        :param ip: the master host ip address.
+        :type ip: str
+
+        :param ctx: the click cli context, automatically passed by cli.
+        """
+    if ctx.meta["master_ip"]:
+        valid_prompt = False
+        while not valid_prompt:
+            prompt = click.prompt(
+                text="Master IP currently set to {master_ip_} - Do you want to overwrite?".format(
+                    master_ip_=ctx.meta["master_ip"]
+                ),
+                type=click.Choice(["y", "n"]),
+                show_choices=True,
+                default="n",
+                show_default=False
+            )
+            if prompt == "y":
+                ctx.meta["master_ip"] = ip
+                valid_prompt = True
+                click.echo("Updated master IP to {ip_}".format(ip_=ip))
+            elif prompt == "n":
+                click.echo("Aborted setting master IP.")
+                valid_prompt = True
+    else:
+        ctx.meta["master_ip"] = ip
+
+    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
+
+
+@config.command()
+@click.pass_context
+@click.argument("port", type=int)
+def master_port(ctx, port):
+    """
+    Update the config for the exposed port on the master host to map to containers.
+
+    :param port: the master host port to expose for mapping.
+    :type port: int
+
+    :param ctx: the click cli context, automatically passed by cli.
+    """
+    valid_prompt = False
+    while not valid_prompt:
+        prompt = click.prompt(
+            text="Master port currently set to {master_port_} - Do you want to overwrite?".format(
+                master_port_=ctx.meta["master_port"]
+            ),
+            type=click.Choice(["y", "n"]),
+            show_choices=True,
+            default="n",
+            show_default=False
+        )
+        if prompt == "y":
+            ctx.meta["master_port"] = port
+            valid_prompt = True
+            click.echo("Updated master port to {port_}".format(port_=port))
+        elif prompt == "n":
+            click.echo("Aborted setting master port.")
+            valid_prompt = True
+
+    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
 
 
 @client.group()
@@ -25,33 +117,32 @@ def client():
               type=click.Choice(["docker", "kubernetes"]),
               default="docker")
 def cloud(ctx, orchestrator):
-    ctx.obj = Context(orchestrator)
+    ctx.meta["orchestrator"] = orchestrator
 
 
 @cloud.command()
-@click.pass_obj
+@click.pass_context
 @click.option("--provider", "-p", "provider_name",
               type=click.Choice(["amazon", "openstack", "virtualbox", "vsphere"]),
               default="vsphere")
-@click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=False)
-def create(context, provider_name, configuration_file_path):
+@click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=True)
+def create(ctx, provider_name, configuration_file_path):
     """
     Create and setup the cloud environment.
-
-    :param context: the click cli context, automatically passed by cli.
 
     :param provider_name: the cloud provider name.
     :type provider_name: str
 
-    :param configuration_file_path: the path to the PGA configuration file.
+    :param configuration_file_path: the path to the cloud configuration file.
     :type configuration_file_path: str
-    """
 
+    :param ctx: the click cli context, automatically passed by cli.
+    """
     # Retrieves the configuration.
     configuration = get_configuration(configuration_file_path)
 
     # Recognizes the correct driver.
-    driver = get_driver(provider_name, context.orchestrator, configuration, logger)
+    driver = get_driver(provider_name, ctx.meta["orchestrator"], configuration, logger)
     click.echo(driver.name)
 
     # Creates the cloud environment.
@@ -80,13 +171,10 @@ def init(context):
 
 
 @cloud.command()
-@click.pass_obj
 @click.argument("host_ip", type=str)
-def reset(context, host_ip):
+def reset(host_ip):
     """
     Reset the cloud by removing the PGA Manager.
-
-    :param context: the click cli context, automatically passed by cli.
 
     :param host_ip: the IP address of a host in the cloud.
     :type host_ip: str
@@ -95,12 +183,9 @@ def reset(context, host_ip):
 
 
 @cloud.command()
-@click.pass_obj
-def destroy(context):
+def destroy():
     """
     Remove the cloud environment and all its PGA contents.
-
-    :param context: the click cli context, automatically passed by cli.
     """
     click.echo("cloud destroy")  # TODO 105: extend client cli with cloud teardown
 
@@ -188,6 +273,7 @@ def get_configuration(configuration_file_path):
     if configuration_file_path:
         return utils.parse_yaml(configuration_file_path)
     else:
+        click.echo("No configuration file path defined")
         return {}
 
 
