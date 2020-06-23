@@ -16,8 +16,7 @@ CLIENT_CLI_CONTEXT_DEFAULTS = {
     "master_port": 5000
 }
 
-# TODO: split changes into two commits: one for implementing the context file, and one for cli changes
-# TODO: 'client pga init' can execute but raises some exception. check this out in detail
+# TODO #104: 'client pga init' can execute but raises some exception. check this out in detail
 
 
 @click.group()
@@ -228,27 +227,47 @@ def pga():
 
 
 @pga.command()
-@click.option("--manager", "-m", "manager_ip", type=str)
+@click.pass_context
 @click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=True)
-def init(manager_ip, configuration_file_path):
+@click.option("--manager-ip", "-m", "manager_ip", type=str, required=False)
+def init(ctx, configuration_file_path, manager_ip):
     """
     Initialize a new PGA run.
 
-    :param manager_ip: the IP address of the PGA Manager node.
+    :param configuration_file_path: the path to the PGA configuration file.
+            If not supplied, the default configuration will be run.
+    :type configuration_file_path: str
+
+    :param manager_ip: the IP address of the PGA Manager node. Can also be set in the context, see 'config master_ip'.
     :type manager_ip: str
 
-    :param configuration_file_path: the path to the PGA configuration file.
-    :type configuration_file_path: str
+    :param ctx: the click cli context, automatically passed by cli.
 
     :return: generated PGA id
     """
-    click.echo("pga init " + manager_ip)
+    click.echo("pga init {} -- {}".format(configuration_file_path, manager_ip))
 
     # Retrieves the configuration file
     configuration = get_configuration(configuration_file_path)
+    print(configuration)
 
-    pga_id = 123
-    click.echo("Initialized new PGA with id: " + str(pga_id))  # id is generated
+    if not manager_ip:
+        if not ctx.meta["master_ip"]:
+            raise Exception("No master host IP defined! You can define it by creating the cloud environment"
+                            "or by explicitly setting it with command 'client config master-ip'."
+                            "Type 'client config master-ip --help' for more details.")
+        manager_ip = ctx.meta["master_ip"]
+
+    response = requests.post("https://{}:{}/pga".format(manager_ip, ctx.meta["master_port"]))
+    print(response)
+    json_obj = response.json()
+    print(json_obj)
+
+    print(json_obj.id)
+    print(response.content.id)
+
+    pga_id = 1
+    click.echo("Initialized new PGA with id: {}".format(pga_id))  # id is generated
     return pga_id  # TODO 103: extend client cli with runner creation
 
 
