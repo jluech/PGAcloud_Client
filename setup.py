@@ -3,7 +3,8 @@ from setuptools import setup, find_packages
 requirements = [
     "click",
     "logbook",
-    "PyYAML"
+    "PyYAML",
+    "requests"
 ]
 
 setup(

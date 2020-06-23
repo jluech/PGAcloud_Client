@@ -148,18 +148,48 @@ def create(ctx, provider_name, configuration_file_path):
     # Creates the cloud environment.
     driver.setup_cloud_environment()
 
+    # Saves the manager's IP address.
+    manager_ip, error = utils.execute_command(
+        command="docker-machine ip dockermaster",
+        working_directory=os.curdir,
+        environment_variables=None,
+        executor=None,
+        logger=logger,
+    )
+
+    if error:
+        logger.error(error)
+        click.echo(error)
+    else:
+        if not ctx.meta["master_ip"]:
+            click.echo(manager_ip)
+        else:
+            click.echo("Overriding config for master host ip to {ip_}".format(ip_=ctx.meta["master_ip"]))
+        ctx.meta["master_ip"] = manager_ip
+
+    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
+
 
 @cloud.command()
-@click.pass_obj
-def init(context):
+@click.pass_context
+@click.option("--port", "-p", "port", type=int)
+def init(ctx, port):
     """
     Initialize the PGA Manager.
 
-    :param context: the click cli context, automatically passed by cli.
+    :param port: the external port on the host to map to the container.
+                    Defaults to the current meta config. See :func:`config`.
+    :type port: int
+
+    :param ctx: the click cli context, automatically passed by cli.
     """
-    if context.orchestrator == "docker":
+    if not port:
+        port = ctx.meta["master_port"]
+
+    if ctx.meta["orchestrator"] == "docker":
         utils.execute_command(
-            command=os.getcwd() + "\\client\\docker-machine_ssh_docker_run.sh -i jluech/pga-cloud-manager",
+            command=os.getcwd() + "\\client\\docker-machine_ssh_docker_run.sh "
+                                  "-i jluech/pga-cloud-manager -p {port_}".format(port_=port),
             working_directory=os.curdir,
             environment_variables=None,
             executor=None,
@@ -167,7 +197,9 @@ def init(context):
             livestream=True
         )
     else:
-        print("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
+        click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
+
+    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
 
 
 @cloud.command()
@@ -229,7 +261,7 @@ def run(pga_id):
     :param pga_id: the id of the PGA to run, retrieved from initialization.
     :type pga_id: int
     """
-    click.echo("pga run " + str(pga_id))  # TODO 106: extend client cli with runner start
+    click.echo("pga run {}".format(pga_id))  # TODO 106: extend client cli with runner start
 
 
 @pga.command()
@@ -242,7 +274,7 @@ def monitor(pga_id):
     :param pga_id: the id of the PGA to monitor, retrieved from initialization.
     :type pga_id: int
     """
-    click.echo("pga monitor " + str(pga_id))  # TODO 107: extend client cli with runner manipulation
+    click.echo("pga monitor {}".format(pga_id))  # TODO 107: extend client cli with runner manipulation
 
 
 @pga.command()
@@ -254,7 +286,7 @@ def pause(pga_id):
     :param pga_id: the id of the PGA to pause, retrieved from initialization.
     :type pga_id: int
     """
-    click.echo("pga pause " + str(pga_id))  # TODO 107: extend client cli with runner manipulation
+    click.echo("pga pause {}".format(pga_id))  # TODO 107: extend client cli with runner manipulation
 
 
 @pga.command()
@@ -266,7 +298,7 @@ def stop(pga_id):
     :param pga_id: the id of the PGA to monitor, retrieved from initialization.
     :type pga_id: int
     """
-    click.echo("pga stop " + str(pga_id))  # TODO 108: extend client cli with runner teardown
+    click.echo("pga stop {}".format(pga_id))  # TODO 108: extend client cli with runner teardown
 
 
 def get_configuration(configuration_file_path):
@@ -280,21 +312,21 @@ def get_configuration(configuration_file_path):
 def get_driver(provider_name, orchestrator, configuration, logger):
     if provider_name == "amazon":
         # return AmazonCloudProviderDriver(configuration, logger)
-        print("Could not find 'amazon' driver, falling back to 'vsphere' docker driver")
+        click.echo("Could not find 'amazon' driver, falling back to 'vsphere' docker driver")
         return VSphereDockerDriver(configuration, logger)  # TODO 104: implement Amazon driver
     elif provider_name == "openstack":
         # return OpenStackCloudProviderDriver(configuration, logger)
-        print("Could not find 'openstack' driver, falling back to 'vsphere' docker driver")
+        click.echo("Could not find 'openstack' driver, falling back to 'vsphere' docker driver")
         return VSphereDockerDriver(configuration, logger)  # TODO 104: implement Openstack driver
     elif provider_name == "virtualbox":
         # return VirtualboxProviderDriver(logger)
-        print("Could not find 'virtualbox' driver, falling back to 'vsphere' docker driver")
+        click.echo("Could not find 'virtualbox' driver, falling back to 'vsphere' docker driver")
         return VSphereDockerDriver(configuration, logger)  # TODO 104: implement Virtualbox driver
     elif provider_name == "vsphere":
         if orchestrator == "docker":
             return VSphereDockerDriver(configuration, logger)
         else:
-            logger.warning("Currently only 'docker' is implemented as orchestrator, falling back on docker orchestrator")
+            click.echo("Currently only 'docker' is implemented as orchestrator, falling back on docker orchestrator")
             return VSphereDockerDriver(configuration, logger)  # TODO 202: implement kubernetes orchestrator
 
 
