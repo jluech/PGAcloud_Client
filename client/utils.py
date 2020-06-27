@@ -45,7 +45,7 @@ def execute_command(
 
 
 def parse_yaml(yaml_file_path):
-    with open(yaml_file_path, mode='r', encoding='utf-8') as yaml_file:
+    with open(yaml_file_path, mode="r", encoding="utf-8") as yaml_file:
         content = yaml.safe_load(yaml_file) or {}
     return content
 
@@ -76,7 +76,6 @@ def store_context(meta_dict, context_file_path):
                 context_file.write("{key_}: {value_}\n".format(key_=key, value_=meta_dict[key]))
             context_file.close()
     except FileNotFoundError:
-        print("except")
         context_file = open(context_file_path, mode="x", encoding="utf-8")
         for key in keys:
             context_file.write("<{key_}>: {value_}\n".format(key_=key, value_=meta_dict[key]))

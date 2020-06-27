@@ -21,6 +21,7 @@ CLIENT_CLI_CONTEXT_DEFAULTS = {
 @click.group()
 @click.pass_context
 def client(ctx):
+    # Initializes the meta context.
     stored_context = utils.read_context(CLIENT_CLI_CONTEXT_FILE)
 
     for key in CLIENT_CLI_CONTEXT_KEYS:
@@ -50,6 +51,7 @@ def master_ip(ctx, ip):
 
         :param ctx: the click cli context, automatically passed by cli.
         """
+    changed = False
     if ctx.meta["master_ip"]:
         valid_prompt = False
         while not valid_prompt:
@@ -66,13 +68,17 @@ def master_ip(ctx, ip):
                 ctx.meta["master_ip"] = ip
                 valid_prompt = True
                 click.echo("Updated master IP to {ip_}".format(ip_=ip))
+                changed = True
             elif prompt == "n":
                 click.echo("Aborted setting master IP.")
                 valid_prompt = True
     else:
         ctx.meta["master_ip"] = ip
+        changed = True
 
-    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
+    # Updates the meta context storage file.
+    if changed:
+        utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
 
 
 @config.command()
@@ -87,26 +93,34 @@ def master_port(ctx, port):
 
     :param ctx: the click cli context, automatically passed by cli.
     """
-    valid_prompt = False
-    while not valid_prompt:
-        prompt = click.prompt(
-            text="Master port currently set to {master_port_} - Do you want to overwrite?".format(
-                master_port_=ctx.meta["master_port"]
-            ),
-            type=click.Choice(["y", "n"]),
-            show_choices=True,
-            default="n",
-            show_default=False
-        )
-        if prompt == "y":
-            ctx.meta["master_port"] = port
-            valid_prompt = True
-            click.echo("Updated master port to {port_}".format(port_=port))
-        elif prompt == "n":
-            click.echo("Aborted setting master port.")
-            valid_prompt = True
+    changed = False
+    if ctx.meta["master_port"]:
+        valid_prompt = False
+        while not valid_prompt:
+            prompt = click.prompt(
+                text="Master port currently set to {master_port_} - Do you want to overwrite?".format(
+                    master_port_=ctx.meta["master_port"]
+                ),
+                type=click.Choice(["y", "n"]),
+                show_choices=True,
+                default="n",
+                show_default=False
+            )
+            if prompt == "y":
+                ctx.meta["master_port"] = port
+                valid_prompt = True
+                click.echo("Updated master port to {port_}".format(port_=port))
+                changed = True
+            elif prompt == "n":
+                click.echo("Aborted setting master port.")
+                valid_prompt = True
+    else:
+        ctx.meta["master_port"] = port
+        changed = True
 
-    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
+    # Updates the meta context storage file.
+    if changed:
+        utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
 
 
 @client.group()
@@ -154,17 +168,17 @@ def create(ctx, provider_name, configuration_file_path):
         executor=None,
         logger=logger,
     )
-
     if error:
         logger.error(error)
         click.echo(error)
     else:
         if not ctx.meta["master_ip"]:
-            click.echo(manager_ip)
+            click.echo("Setting master host IP {ip_}".format(ip_=manager_ip))
         else:
-            click.echo("Overriding config for master host ip to {ip_}".format(ip_=ctx.meta["master_ip"]))
+            click.echo("Updating config for master host IP to {ip_}".format(ip_=ctx.meta["master_ip"]))
         ctx.meta["master_ip"] = manager_ip
 
+    # Updates the meta context storage file.
     utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
 
 
@@ -181,9 +195,11 @@ def init(ctx, port):
 
     :param ctx: the click cli context, automatically passed by cli.
     """
+    # Sets the port if not provided.
     if not port:
         port = ctx.meta["master_port"]
 
+    # Initializes the manager container via the selected orchestrator.
     if ctx.meta["orchestrator"] == "docker":
         utils.execute_command(
             command=os.getcwd() + "\\client\\docker-machine_ssh_docker_run.sh "
@@ -197,6 +213,7 @@ def init(ctx, port):
     else:
         click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
 
+    # Updates the meta context storage file.
     utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
 
 
@@ -244,9 +261,7 @@ def create(ctx, configuration_file_path, manager_ip):
 
     :return: generated PGA id
     """
-    # Retrieves the configuration file
-    configuration = get_configuration(configuration_file_path)
-
+    # Sets the manager IP if not provided.
     if not manager_ip:
         if not ctx.meta["master_ip"]:
             raise Exception("No master host IP defined! You can define it by creating the cloud environment"
@@ -254,7 +269,30 @@ def create(ctx, configuration_file_path, manager_ip):
                             "Type 'client config master-ip --help' for more details.")
         manager_ip = ctx.meta["master_ip"]
 
-    response = http.post("http://{}:{}/pga".format(manager_ip, ctx.meta["master_port"]), verify=False)
+    # Retrieves the configuration file.
+    configuration = get_configuration(configuration_file_path)
+    use_population = configuration.get("population").get("use_initial_population")
+    if use_population:
+        population_file_path = configuration.get("population").get("population_file_path")
+
+        # Retrieves the file with the initial population.
+        files = {"population": open(population_file_path, "r")}
+        if not files.get("population"):
+            raise FileNotFoundError
+    else:
+        files = {}
+
+    # Retrieves the appended files for transmission.
+    custom_files_dict = configuration.get("custom_files")
+    custom_files_keys = [*custom_files_dict.keys()]
+    for key in custom_files_keys:
+        file = open(custom_files_dict.get(key), "r")
+        if not file:
+            raise FileNotFoundError
+        files[key] = file
+
+    # Calls the manager API to create the PGA.
+    response = http.post("http://{}:{}/pga".format(manager_ip, ctx.meta["master_port"]), files=files, verify=False)
     json_response = response.json()
     pga_id = json_response["id"]
 
