@@ -41,16 +41,24 @@ def config():
 
 @config.command()
 @click.pass_context
-@click.argument("ip", type=str)
+@click.argument("ip", type=str, required=False)
 def master_ip(ctx, ip):
     """
-        Update the config for the master host ip address in the cloud.
+        Update the configuration for the master host ip address in the cloud.
+        If no argument is provided, it will show the current configuration.
 
         :param ip: the master host ip address.
         :type ip: str
 
         :param ctx: the click cli context, automatically passed by cli.
         """
+    if not ip:
+        if ctx.meta["master_ip"]:
+            click.echo("Current master IP: {ip_}".format(ip_=ctx.meta["master_ip"]))
+        else:
+            click.echo("Master IP currently not set. You can set it by providing an argument to this function.")
+        return
+
     changed = False
     if ctx.meta["master_ip"]:
         valid_prompt = False
@@ -83,16 +91,24 @@ def master_ip(ctx, ip):
 
 @config.command()
 @click.pass_context
-@click.argument("port", type=int)
+@click.argument("port", type=int, required=False)
 def master_port(ctx, port):
     """
-    Update the config for the exposed port on the master host to map to containers.
+    Update the configuration for the exposed port on the master host to map to containers.
+    If no argument is provided, it will show the current configuration.
 
     :param port: the master host port to expose for mapping.
     :type port: int
 
     :param ctx: the click cli context, automatically passed by cli.
     """
+    if not port:
+        if ctx.meta["master_port"]:
+            click.echo("Current master port: {port_}".format(port_=ctx.meta["master_port"]))
+        else:
+            click.echo("Master port currently not set. You can set it by providing an argument to this function.")
+        return
+
     changed = False
     if ctx.meta["master_port"]:
         valid_prompt = False
@@ -190,7 +206,7 @@ def init(ctx, port):
     Initialize the PGA Manager.
 
     :param port: the external port on the host to map to the container.
-                    Defaults to the current meta config. See :func:`config`.
+                    Defaults to the current meta config. See :func:`config` for reference.
     :type port: int
 
     :param ctx: the click cli context, automatically passed by cli.
@@ -212,9 +228,6 @@ def init(ctx, port):
         )
     else:
         click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
-
-    # Updates the meta context storage file.
-    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
 
 
 @cloud.command()
