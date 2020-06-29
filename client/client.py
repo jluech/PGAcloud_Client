@@ -304,8 +304,19 @@ def create(ctx, configuration_file_path, manager_ip):
             raise FileNotFoundError
         files[key] = file
 
+    # Appends the configuration file to the request.
+    files["config"] = open(configuration_file_path, "r")
+
     # Calls the manager API to create the PGA.
-    response = http.post("http://{}:{}/pga".format(manager_ip, ctx.meta["master_port"]), files=files, verify=False)
+    response = http.post(
+        url="http://{}:{}/pga".format(manager_ip, ctx.meta["master_port"]),
+        params={
+            "config": configuration_file_path,
+            "orchestrator": ctx.meta["orchestrator"]
+        },
+        files=files,
+        verify=False
+    )
     json_response = response.json()
     pga_id = json_response["id"]
 
