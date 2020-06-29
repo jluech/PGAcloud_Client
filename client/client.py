@@ -4,7 +4,7 @@ import click
 import logbook
 import requests
 
-from client import utils
+from client import docker_utils, utils
 from client.provider_drivers.vSphere_driver import VSphereDockerDriver
 
 logger = logbook.Logger('client')
@@ -201,13 +201,17 @@ def create(ctx, provider_name, configuration_file_path):
 @cloud.command()
 @click.pass_context
 @click.option("--port", "-p", "port", type=int)
-def init(ctx, port):
+@click.argument("cert_path", type=str)
+def init(ctx, port, cert_path):
     """
     Initialize the PGA Manager.
 
     :param port: the external port on the host to map to the container.
                     Defaults to the current meta config. See :func:`config` for reference.
     :type port: int
+
+    :param cert_path: the path to a folder containing your SSL certificates.
+    :type cert_path: str
 
     :param ctx: the click cli context, automatically passed by cli.
     """
@@ -217,15 +221,23 @@ def init(ctx, port):
 
     # Initializes the manager container via the selected orchestrator.
     if ctx.meta["orchestrator"] == "docker":
-        utils.execute_command(
-            command=os.getcwd() + "\\client\\docker-machine_ssh_docker_run.sh "
-                                  "-i jluech/pga-cloud-manager -p {port_}".format(port_=port),
-            working_directory=os.curdir,
-            environment_variables=None,
-            executor=None,
-            logger=logger,
-            livestream=True
+        docker_client = docker_utils.create_docker_client(
+            cert_path=cert_path,
+            host_ip=ctx.meta["master_ip"],
+            host_port=2376
+            # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )
+
+        manager_service = docker_client.services.create(
+            image="jluech/pga-cloud-manager",
+            name="manager",
+            endpoint_spec={
+                "Ports": [
+                    {"Protocol": "tcp", "PublishedPort": port, "TargetPort": 5000},
+                ]
+            }
+        )
+        click.echo("Successfully created service: {name_}".format(name_=manager_service.name))
     else:
         click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
 
