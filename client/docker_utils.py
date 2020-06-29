@@ -35,7 +35,11 @@ def print_image_history(image_tag):
             print("")
 
 
-def create_docker_client(cert_path, host_ip, host_port):
+def get_docker_client(cert_path, host_ip, host_port):
+    global docker_client
+    if docker_client:
+        return docker_client
+
     tls_config = docker.tls.TLSConfig(
         ca_cert=os.path.join(cert_path, "ca.pem"),
         client_cert=(
@@ -43,14 +47,11 @@ def create_docker_client(cert_path, host_ip, host_port):
             os.path.join(cert_path, "key.pem")
         )
     )
-    new_client = docker.DockerClient(base_url="tcp://{ip_}:{port_}".format(
+    docker_client = docker.DockerClient(base_url="tcp://{ip_}:{port_}".format(
         ip_=host_ip,
         port_=host_port
     ),
         tls=tls_config,
         version="auto"
     )
-    global docker_client
-    docker_client = new_client
-
     return docker_client

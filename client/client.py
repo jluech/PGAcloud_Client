@@ -221,7 +221,7 @@ def init(ctx, port, cert_path):
 
     # Initializes the manager container via the selected orchestrator.
     if ctx.meta["orchestrator"] == "docker":
-        docker_client = docker_utils.create_docker_client(
+        docker_client = docker_utils.get_docker_client(
             cert_path=cert_path,
             host_ip=ctx.meta["master_ip"],
             host_port=2376
