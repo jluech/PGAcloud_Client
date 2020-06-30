@@ -45,7 +45,8 @@ def get_docker_client(cert_path, host_ip, host_port):
         client_cert=(
             os.path.join(cert_path, "cert.pem"),
             os.path.join(cert_path, "key.pem")
-        )
+        ),
+        verify=True
     )
     docker_client = docker.DockerClient(base_url="tcp://{ip_}:{port_}".format(
         ip_=host_ip,
