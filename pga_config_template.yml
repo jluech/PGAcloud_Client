@@ -1,19 +1,32 @@
-# TODO: decide whether this is a docker-specific template for container-images, or if this can be used in a generic way
+# TODO 202: decide whether this is a docker-specific template for container-images, or if this can be used in a generic way
 
+# Configuration template for Parallel Genetic Algorithms (PGA), used when creating a new PGA.
+# For more information on valid YAML syntax, have a look at this documentation on symfony.com:
+# https://symfony.com/doc/current/components/yaml/yaml_format.html
+
+# TODO 204: implement island model
 # Predefined models: "Master-Slave" and "Island" (not ready yet). Declare custom models representing one generation cycle.
 # Use "/" as separator and first/last image being the runner, e.g., "RUN/SEL/CO/MUT/FE/RUN"
 model: 'Master-Slave'
 
 
-# List all images of containers involved, including their maximum allowed scaling.
+# List of inter-component services to use in the PGA, including their initial scaling.
+# Those in uppercase are predefined default services.
+services: {
+  MSG: {name: 'rabbitMQ', image: 'rabbitmq:3.8-alpine', scaling: ''},
+  DB: {name: 'redis', image: 'redis:6.0-alpine', scaling: ''},
+}
+
+
+# List all images of components involved, including their initial scaling.
 # Those in uppercase are predefined default operators.
 images: {
-  RUN:  {name: "runner", image: 'jluech/pga-cloud-runner', scaling: 1},
-  INIT: {name: "initializer", image: 'jluech/pga-cloud-initializer', scaling: 1},
-  SEL:  {name: "selection", image: 'jluech/pga-cloud-selection', scaling: 1},
-  CO:   {name: "crossover", image: 'jluech/pga-cloud-crossover', scaling: 1},
-  MUT:  {name: "mutation", image: 'jluech/pga-cloud-mutation', scaling: 1},
-  FE:   {name: "fitness", image: 'jluech/pga-cloud-fitness', scaling: 3},
+  RUN:  {name: 'runner', image: 'jluech/pga-cloud-runner', scaling: 1},
+  INIT: {name: 'initializer', image: 'jluech/pga-cloud-initializer', scaling: 2},
+  SEL:  {name: 'selection', image: 'jluech/pga-cloud-selection', scaling: 1},
+  CO:   {name: 'crossover', image: 'jluech/pga-cloud-crossover', scaling: 1},
+  MUT:  {name: 'mutation', image: 'jluech/pga-cloud-mutation', scaling: 1},
+  FE:   {name: 'fitness', image: 'jluech/pga-cloud-fitness', scaling: 3},
 }
 
 
@@ -43,7 +56,3 @@ properties: {
 custom_files: {
 
 }
-
-
-# For more information on valid YAML syntax, have a look at this documentation on symfony.com:
-# https://symfony.com/doc/current/components/yaml/yaml_format.html
