@@ -434,7 +434,7 @@ def pga():
 
 @pga.command()
 @click.pass_context
-@click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=True)
+@click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=False)
 @click.option("--manager-host", "-m", "manager_host", type=str, required=False)
 def create(ctx, configuration_file_path, manager_host):
     """
@@ -444,7 +444,8 @@ def create(ctx, configuration_file_path, manager_host):
             If not supplied, the default configuration will be run.
     :type configuration_file_path: str
 
-    :param manager_host: the IP address or hostname of the PGA Manager node. Can also be set in the context, see 'config master_host'.
+    :param manager_host: the IP address or hostname of the PGA Manager node.
+            Can also be set in the context, see 'config master_host'.
     :type manager_host: str
 
     :param ctx: the click cli context, automatically passed by cli.
@@ -458,6 +459,10 @@ def create(ctx, configuration_file_path, manager_host):
                             "or by explicitly setting it with command 'client config master-host'."
                             "Type 'client config master-host --help' for more details.")
         manager_host = ctx.meta["master_host"]
+
+    # Sets the default configuration if no configuration file path provided.
+    if not configuration_file_path:
+        configuration_file_path = os.path.join(os.getcwd(), "pga_config_template.yml")
 
     # Retrieves the configuration file.
     configuration = get_configuration(configuration_file_path)

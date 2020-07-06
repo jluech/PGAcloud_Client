@@ -32,7 +32,7 @@ images: {
 
 # Settings for providing an initial population.
 population: {
-  use_initial_population: True,
+  use_initial_population: False,
   population_file_path: ''
 }
 
