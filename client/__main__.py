@@ -12,7 +12,12 @@ logger = logbook.Logger('client')
 http = requests.sessions.Session()
 
 CLIENT_CLI_CONTEXT_FILE = os.getcwd() + "\\client\\cli_context.yml"
-CLIENT_CLI_CONTEXT_KEYS = ["orchestrator", "master_host", "master_port"]
+CLIENT_CLI_CONTEXT_KEYS = [
+    "orchestrator",
+    "master_host",
+    "master_port",
+    "cert_path",
+]
 CLIENT_CLI_CONTEXT_DEFAULTS = {
     "orchestrator": "docker",
     "master_port": 5000
@@ -50,7 +55,7 @@ def config():
 def master_host(ctx, host):
     """
         Update the configuration for the master host (ip address or hostname) in the cloud.
-        If no argument is provided, it will show the current configuration.
+        If no argument is provided, it will print the current configuration.
 
         :param host: the master host (ip address or hostname).
         :type host: str
@@ -83,7 +88,7 @@ def master_host(ctx, host):
                 click.echo("Updated master host to {host_}".format(host_=host))
                 changed = True
             elif prompt == "n":
-                click.echo("Aborted setting master host.")
+                click.echo("Aborted setting master host")
                 valid_prompt = True
     else:
         ctx.meta["master_host"] = host
@@ -100,7 +105,7 @@ def master_host(ctx, host):
 def master_port(ctx, port):
     """
     Update the configuration for the exposed port on the master host to map to containers.
-    If no argument is provided, it will show the current configuration.
+    If no argument is provided, it will print the current configuration.
 
     :param port: the master host port to expose for mapping.
     :type port: int
@@ -133,10 +138,60 @@ def master_port(ctx, port):
                 click.echo("Updated master port to {port_}".format(port_=port))
                 changed = True
             elif prompt == "n":
-                click.echo("Aborted setting master port.")
+                click.echo("Aborted setting master port")
                 valid_prompt = True
     else:
         ctx.meta["master_port"] = port
+        changed = True
+
+    # Updates the meta context storage file.
+    if changed:
+        utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
+
+
+@config.command()
+@click.pass_context
+@click.argument("cert_path", type=click.Path(exists=True), required=False)
+def certificates(ctx, cert_path):
+    """
+    Update the configuration for the path to the SSL certificates required for secure connection to cloud master host.
+    If no argument is provided, it will print the current configuration.
+
+    :param cert_path: the path to the certificates.
+    :type cert_path: str
+
+    :param ctx: the click cli context, automatically passed by cli.
+    """
+    if not cert_path:
+        if ctx.meta["cert_path"]:
+            click.echo("Current certificates path: {path_}".format(path_=ctx.meta["cert_path"]))
+        else:
+            click.echo("Certificates path currently not set. You can set it by providing an argument to this function.")
+        return
+
+    changed = False
+    if ctx.meta["cert_path"]:
+        valid_prompt = False
+        while not valid_prompt:
+            prompt = click.prompt(
+                text="Certificates path currently set to {path_} - Do you want to overwrite?".format(
+                    path_=ctx.meta["cert_path"]
+                ),
+                type=click.Choice(["y", "n"]),
+                show_choices=True,
+                default="n",
+                show_default=False
+            )
+            if prompt == "y":
+                ctx.meta["cert_path"] = cert_path
+                valid_prompt = True
+                click.echo("Updated certificates path to {path_}".format(path_=cert_path))
+                changed = True
+            elif prompt == "n":
+                click.echo("Aborted setting certificates path")
+                valid_prompt = True
+    else:
+        ctx.meta["cert_path"] = cert_path
         changed = True
 
     # Updates the meta context storage file.
@@ -196,7 +251,7 @@ def create(ctx, provider_name, configuration_file_path):
         if not ctx.meta["master_host"]:
             click.echo("Setting master host {host_}".format(host_=manager_host))
         else:
-            click.echo("Updating config for master host to {host_}".format(host_=ctx.meta["master_host"]))
+            click.echo("Updating config for master host to {host_}".format(host_=manager_host))
         ctx.meta["master_host"] = manager_host
 
     # Updates the meta context storage file.
@@ -206,7 +261,7 @@ def create(ctx, provider_name, configuration_file_path):
 @cloud.command()
 @click.pass_context
 @click.option("--port", "-p", "port", type=int)
-@click.argument("cert_path", type=str)
+@click.argument("cert_path", type=click.Path(exists=True), required=False)
 def init(ctx, port, cert_path):
     """
     Initialize the PGA Manager.
@@ -216,10 +271,22 @@ def init(ctx, port, cert_path):
     :type port: int
 
     :param cert_path: the path to a folder containing your SSL certificates.
+                Can also be set in the context, see 'config certificates'.
     :type cert_path: str
 
     :param ctx: the click cli context, automatically passed by cli.
     """
+    # Retrieves the certificates path.
+    if not cert_path:
+        if not ctx.meta["cert_path"]:
+            raise Exception("No certificates path defined! You can define it by providing it as an argument"
+                            "or by explicitly setting it with command 'client config cert-path'."
+                            "Type 'client config cert-path --help' for more details.")
+        cert_path = ctx.meta["cert_path"]
+    else:
+        ctx.meta["cert_path"] = cert_path
+        click.echo("Updating config for certificates path to {path_}".format(path_=ctx.meta["cert_path"]))
+
     # Sets the port if not provided.
     if not port:
         port = ctx.meta["master_port"]
@@ -279,19 +346,34 @@ def init(ctx, port, cert_path):
     else:
         click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
 
+    # Updates the meta context storage file.
+    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
+
 
 @cloud.command()
 @click.pass_context
-@click.argument("cert_path", type=str)
+@click.argument("cert_path", type=click.Path(exists=True), required=False)
 def reset(ctx, cert_path):
     """
     Reset the cloud by removing the PGA Manager.
 
     :param cert_path: the path to a folder containing your SSL certificates.
+                    Can also be set in the context, see 'config certificates'.
     :type cert_path: str
 
     :param ctx: the click cli context, automatically passed by cli.
     """
+    # Retrieves the certificates path.
+    if not cert_path:
+        if not ctx.meta["cert_path"]:
+            raise Exception("No certificates path defined! You can define it by providing it as an argument"
+                            "or by explicitly setting it with command 'client config cert-path'."
+                            "Type 'client config cert-path --help' for more details.")
+        cert_path = ctx.meta["cert_path"]
+    else:
+        ctx.meta["cert_path"] = cert_path
+        click.echo("Updating config for certificates path to {path_}".format(path_=ctx.meta["cert_path"]))
+
     # Removes the PGA manager via the selected orchestrator.
     if ctx.meta["orchestrator"] == "docker":
         docker_client = docker_utils.get_docker_client(
@@ -332,6 +414,9 @@ def reset(ctx, cert_path):
             click.echo("Successfully removed service: {name_}".format(name_=service_name))
     else:
         click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
+
+    # Updates the meta context storage file.
+    utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
 
 
 @cloud.command()
