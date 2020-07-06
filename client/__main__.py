@@ -1,4 +1,5 @@
 import os
+import time
 
 import click
 import logbook
@@ -16,6 +17,10 @@ CLIENT_CLI_CONTEXT_DEFAULTS = {
     "orchestrator": "docker",
     "master_port": 5000
 }
+
+WAIT_FOR_CONFIRMATION_DURATION = 30.0
+WAIT_FOR_CONFIRMATION_EXCEEDING = 15.0
+WAIT_FOR_CONFIRMATION_SLEEP = 3  # seconds
 
 
 @click.group()
@@ -219,7 +224,7 @@ def init(ctx, port, cert_path):
     if not port:
         port = ctx.meta["master_port"]
 
-    # Initializes the manager container via the selected orchestrator.
+    # Initializes the PGA manager via the selected orchestrator.
     if ctx.meta["orchestrator"] == "docker":
         docker_client = docker_utils.get_docker_client(
             cert_path=cert_path,
@@ -227,7 +232,6 @@ def init(ctx, port, cert_path):
             host_port=2376
             # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )
-
         manager_service = docker_client.services.create(
             image="jluech/pga-cloud-manager",
             name="manager",
@@ -235,9 +239,40 @@ def init(ctx, port, cert_path):
                 "Ports": [
                     {"Protocol": "tcp", "PublishedPort": port, "TargetPort": 5000},
                 ]
-            }
+            },
         )
-        click.echo("Successfully created service: {name_}".format(name_=manager_service.name))
+
+        # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is running.
+        service_running = False
+        service_status = "NOK"
+        exceeding = False
+        duration = 0.0
+        start = time.perf_counter()
+        while not service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
+            try:
+                response = http.get(
+                    url="http://{}:{}/status".format(ctx.meta["master_ip"], ctx.meta["master_port"]),
+                    verify=False
+                )
+                service_status = response.content.decode("utf-8")
+            except:
+                pass
+            finally:
+                # service_running = service_status == "OK"
+                service_running = (service_status == "Status: OK")
+
+            if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
+                click.echo("This is taking longer than usual...")
+                exceeding = True  # only print this once
+
+            time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
+            duration = time.perf_counter() - start
+
+        if duration >= WAIT_FOR_CONFIRMATION_DURATION:
+            click.echo("Exceeded waiting time of {time_}s. It may have encountered an error."
+                       "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
+        else:
+            click.echo("Successfully created service: {name_}".format(name_=manager_service.name))
     else:
         click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
 
@@ -279,7 +314,7 @@ def create(ctx, configuration_file_path, manager_ip):
             If not supplied, the default configuration will be run.
     :type configuration_file_path: str
 
-    :param manager_ip: the IP address of the PGA Manager node. Can also be set in the context, see 'config master_ip'.
+    :param manager_ip: the IP address or hostname of the PGA Manager node. Can also be set in the context, see 'config master_ip'.
     :type manager_ip: str
 
     :param ctx: the click cli context, automatically passed by cli.

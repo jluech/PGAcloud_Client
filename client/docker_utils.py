@@ -48,11 +48,14 @@ def get_docker_client(cert_path, host_ip, host_port):
         ),
         verify=True
     )
-    docker_client = docker.DockerClient(base_url="tcp://{ip_}:{port_}".format(
-        ip_=host_ip,
-        port_=host_port
-    ),
+    docker_client = docker.DockerClient(
+        base_url="tcp://{ip_}:{port_}".format(
+            ip_=host_ip,
+            port_=host_port
+        ),
         tls=tls_config,
-        version="auto"
+        version="auto",
     )
     return docker_client
+
+# docker-machine rm $(docker-machine ls --f "table {{.Name}}")
