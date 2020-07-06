@@ -23,8 +23,9 @@ CLIENT_CLI_CONTEXT_DEFAULTS = {
     "master_port": 5000
 }
 
-WAIT_FOR_CONFIRMATION_DURATION = 30.0
+WAIT_FOR_CONFIRMATION_DURATION = 45.0
 WAIT_FOR_CONFIRMATION_EXCEEDING = 15.0
+WAIT_FOR_CONFIRMATION_TROUBLED = 30.0
 WAIT_FOR_CONFIRMATION_SLEEP = 3  # seconds
 
 
@@ -291,6 +292,12 @@ def init(ctx, port, cert_path):
     if not port:
         port = ctx.meta["master_port"]
 
+    # Ensures there is a known host to connect to.
+    if not ctx.meta["master_host"]:
+        raise Exception("No master host defined! You can define it by creating the cloud environment "
+                        "or by explicitly setting it with command 'client config master-host'. "
+                        "Type 'client config master-host --help' for more details.")
+
     # Initializes the PGA manager via the selected orchestrator.
     if ctx.meta["orchestrator"] == "docker":
         docker_client = docker_utils.get_docker_client(
@@ -313,6 +320,7 @@ def init(ctx, port, cert_path):
         service_running = False
         service_status = "NOK"
         exceeding = False
+        troubled = False
         duration = 0.0
         start = time.perf_counter()
         while not service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
@@ -335,11 +343,15 @@ def init(ctx, port, cert_path):
                 click.echo("This is taking longer than usual...")
                 exceeding = True  # only print this once
 
+            if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
+                click.echo("Oh come on! You can do it...")
+                troubled = True  # only print this once
+
             time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
             duration = time.perf_counter() - start
 
         if duration >= WAIT_FOR_CONFIRMATION_DURATION:
-            click.echo("Exceeded waiting time of {time_}s. It may have encountered an error. "
+            click.echo("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
                        "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
         else:
             click.echo("Successfully created service: {name_}".format(name_=manager_service.name))
@@ -374,6 +386,12 @@ def reset(ctx, cert_path):
         ctx.meta["cert_path"] = cert_path
         click.echo("Updating config for certificates path to {path_}".format(path_=ctx.meta["cert_path"]))
 
+    # Ensures there is a known host to connect to.
+    if not ctx.meta["master_host"]:
+        raise Exception("No master host defined! You can define it by creating the cloud environment "
+                        "or by explicitly setting it with command 'client config master-host'. "
+                        "Type 'client config master-host --help' for more details.")
+
     # Removes the PGA manager via the selected orchestrator.
     if ctx.meta["orchestrator"] == "docker":
         docker_client = docker_utils.get_docker_client(
@@ -394,6 +412,7 @@ def reset(ctx, cert_path):
         # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is not found anymore.
         service_running = True
         exceeding = False
+        troubled = False
         duration = 0.0
         start = time.perf_counter()
         while service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
@@ -404,11 +423,15 @@ def reset(ctx, cert_path):
                 click.echo("This is taking longer than usual...")
                 exceeding = True  # only print this once
 
+            if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
+                click.echo("Oh come on! You can do it...")
+                troubled = True  # only print this once
+
             time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
             duration = time.perf_counter() - start
 
         if duration >= WAIT_FOR_CONFIRMATION_DURATION:
-            click.echo("Exceeded waiting time of {time_}s. It may have encountered an error. "
+            click.echo("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
                        "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
         else:
             click.echo("Successfully removed service: {name_}".format(name_=service_name))
