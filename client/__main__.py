@@ -279,8 +279,8 @@ def init(ctx, port, cert_path):
     # Retrieves the certificates path.
     if not cert_path:
         if not ctx.meta["cert_path"]:
-            raise Exception("No certificates path defined! You can define it by providing it as an argument"
-                            "or by explicitly setting it with command 'client config cert-path'."
+            raise Exception("No certificates path defined! You can define it by providing it as an argument "
+                            "or by explicitly setting it with command 'client config cert-path'. "
                             "Type 'client config cert-path --help' for more details.")
         cert_path = ctx.meta["cert_path"]
     else:
@@ -339,7 +339,7 @@ def init(ctx, port, cert_path):
             duration = time.perf_counter() - start
 
         if duration >= WAIT_FOR_CONFIRMATION_DURATION:
-            click.echo("Exceeded waiting time of {time_}s. It may have encountered an error."
+            click.echo("Exceeded waiting time of {time_}s. It may have encountered an error. "
                        "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
         else:
             click.echo("Successfully created service: {name_}".format(name_=manager_service.name))
@@ -366,8 +366,8 @@ def reset(ctx, cert_path):
     # Retrieves the certificates path.
     if not cert_path:
         if not ctx.meta["cert_path"]:
-            raise Exception("No certificates path defined! You can define it by providing it as an argument"
-                            "or by explicitly setting it with command 'client config cert-path'."
+            raise Exception("No certificates path defined! You can define it by providing it as an argument "
+                            "or by explicitly setting it with command 'client config cert-path'. "
                             "Type 'client config cert-path --help' for more details.")
         cert_path = ctx.meta["cert_path"]
     else:
@@ -408,7 +408,7 @@ def reset(ctx, cert_path):
             duration = time.perf_counter() - start
 
         if duration >= WAIT_FOR_CONFIRMATION_DURATION:
-            click.echo("Exceeded waiting time of {time_}s. It may have encountered an error."
+            click.echo("Exceeded waiting time of {time_}s. It may have encountered an error. "
                        "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
         else:
             click.echo("Successfully removed service: {name_}".format(name_=service_name))
@@ -455,8 +455,8 @@ def create(ctx, configuration_file_path, manager_host):
     # Sets the manager IP if not provided.
     if not manager_host:
         if not ctx.meta["master_host"]:
-            raise Exception("No master host defined! You can define it by creating the cloud environment"
-                            "or by explicitly setting it with command 'client config master-host'."
+            raise Exception("No master host defined! You can define it by creating the cloud environment "
+                            "or by explicitly setting it with command 'client config master-host'. "
                             "Type 'client config master-host --help' for more details.")
         manager_host = ctx.meta["master_host"]
 
