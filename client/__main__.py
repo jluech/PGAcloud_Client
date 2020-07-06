@@ -278,15 +278,57 @@ def init(ctx, port, cert_path):
 
 
 @cloud.command()
-@click.argument("host_ip", type=str)
-def reset(host_ip):
+@click.pass_context
+@click.argument("cert_path", type=str)
+def reset(ctx, cert_path):
     """
     Reset the cloud by removing the PGA Manager.
 
-    :param host_ip: the IP address of a host in the cloud.
-    :type host_ip: str
+    :param cert_path: the path to a folder containing your SSL certificates.
+    :type cert_path: str
+
+    :param ctx: the click cli context, automatically passed by cli.
     """
-    click.echo("cloud reset " + host_ip)  # TODO 105: extend client cli with cloud teardown
+    # Removes the PGA manager via the selected orchestrator.
+    if ctx.meta["orchestrator"] == "docker":
+        docker_client = docker_utils.get_docker_client(
+            cert_path=cert_path,
+            host_ip=ctx.meta["master_ip"],
+            host_port=2376
+            # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
+        )
+        found_services = docker_client.services.list(filters={"name": "manager"})
+        if not found_services.__len__() > 0:
+            click.echo("No manager running that could be removed.")
+            return
+
+        manager_service = found_services[0]
+        service_name = manager_service.name
+        manager_service.remove()
+
+        # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is not found anymore.
+        service_running = True
+        exceeding = False
+        duration = 0.0
+        start = time.perf_counter()
+        while service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
+            found_services = docker_client.services.list(filters={"name": "manager"})
+            service_running = (found_services.__len__() > 0)
+
+            if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
+                click.echo("This is taking longer than usual...")
+                exceeding = True  # only print this once
+
+            time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
+            duration = time.perf_counter() - start
+
+        if duration >= WAIT_FOR_CONFIRMATION_DURATION:
+            click.echo("Exceeded waiting time of {time_}s. It may have encountered an error."
+                       "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
+        else:
+            click.echo("Successfully removed service: {name_}".format(name_=service_name))
+    else:
+        click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
 
 
 @cloud.command()
