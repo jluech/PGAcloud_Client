@@ -1,0 +1,12 @@
+amazon_access_key: {}
+amazon_secret_key: {}
+amazon_region: us-east-1
+amazon_subnet_id: subnet-{}
+amazon_security_group_id: {}
+amazon_instance_type: t2.micro
+amazon_ami: ami-f0768de6
+amazon_keypair_name: ccube-amazon
+
+ssh_username: ubuntu
+ssh_private_key_file: {}
+# TODO 104: extend amazon driver with template
