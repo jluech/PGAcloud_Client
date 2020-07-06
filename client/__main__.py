@@ -12,7 +12,7 @@ logger = logbook.Logger('client')
 http = requests.sessions.Session()
 
 CLIENT_CLI_CONTEXT_FILE = os.getcwd() + "\\client\\cli_context.yml"
-CLIENT_CLI_CONTEXT_KEYS = ["orchestrator", "master_ip", "master_port"]
+CLIENT_CLI_CONTEXT_KEYS = ["orchestrator", "master_host", "master_port"]
 CLIENT_CLI_CONTEXT_DEFAULTS = {
     "orchestrator": "docker",
     "master_port": 5000
@@ -46,31 +46,31 @@ def config():
 
 @config.command()
 @click.pass_context
-@click.argument("ip", type=str, required=False)
-def master_ip(ctx, ip):
+@click.argument("host", type=str, required=False)
+def master_host(ctx, host):
     """
-        Update the configuration for the master host ip address in the cloud.
+        Update the configuration for the master host (ip address or hostname) in the cloud.
         If no argument is provided, it will show the current configuration.
 
-        :param ip: the master host ip address.
-        :type ip: str
+        :param host: the master host (ip address or hostname).
+        :type host: str
 
         :param ctx: the click cli context, automatically passed by cli.
         """
-    if not ip:
-        if ctx.meta["master_ip"]:
-            click.echo("Current master IP: {ip_}".format(ip_=ctx.meta["master_ip"]))
+    if not host:
+        if ctx.meta["master_host"]:
+            click.echo("Current master host: {host_}".format(host_=ctx.meta["master_host"]))
         else:
             click.echo("Master IP currently not set. You can set it by providing an argument to this function.")
         return
 
     changed = False
-    if ctx.meta["master_ip"]:
+    if ctx.meta["master_host"]:
         valid_prompt = False
         while not valid_prompt:
             prompt = click.prompt(
-                text="Master IP currently set to {master_ip_} - Do you want to overwrite?".format(
-                    master_ip_=ctx.meta["master_ip"]
+                text="Master host currently set to {master_host_} - Do you want to overwrite?".format(
+                    master_host_=ctx.meta["master_host"]
                 ),
                 type=click.Choice(["y", "n"]),
                 show_choices=True,
@@ -78,15 +78,15 @@ def master_ip(ctx, ip):
                 show_default=False
             )
             if prompt == "y":
-                ctx.meta["master_ip"] = ip
+                ctx.meta["master_host"] = host
                 valid_prompt = True
-                click.echo("Updated master IP to {ip_}".format(ip_=ip))
+                click.echo("Updated master host to {host_}".format(host_=host))
                 changed = True
             elif prompt == "n":
-                click.echo("Aborted setting master IP.")
+                click.echo("Aborted setting master host.")
                 valid_prompt = True
     else:
-        ctx.meta["master_ip"] = ip
+        ctx.meta["master_host"] = host
         changed = True
 
     # Updates the meta context storage file.
@@ -182,7 +182,7 @@ def create(ctx, provider_name, configuration_file_path):
     driver.setup_cloud_environment()
 
     # Saves the manager's IP address.
-    manager_ip, error = utils.execute_command(
+    manager_host, error = utils.execute_command(
         command="docker-machine ip dockermaster",
         working_directory=os.curdir,
         environment_variables=None,
@@ -193,11 +193,11 @@ def create(ctx, provider_name, configuration_file_path):
         logger.error(error)
         click.echo(error)
     else:
-        if not ctx.meta["master_ip"]:
-            click.echo("Setting master host IP {ip_}".format(ip_=manager_ip))
+        if not ctx.meta["master_host"]:
+            click.echo("Setting master host {host_}".format(host_=manager_host))
         else:
-            click.echo("Updating config for master host IP to {ip_}".format(ip_=ctx.meta["master_ip"]))
-        ctx.meta["master_ip"] = manager_ip
+            click.echo("Updating config for master host to {host_}".format(host_=ctx.meta["master_host"]))
+        ctx.meta["master_host"] = manager_host
 
     # Updates the meta context storage file.
     utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
@@ -228,7 +228,7 @@ def init(ctx, port, cert_path):
     if ctx.meta["orchestrator"] == "docker":
         docker_client = docker_utils.get_docker_client(
             cert_path=cert_path,
-            host_ip=ctx.meta["master_ip"],
+            host_addr=ctx.meta["master_host"],
             host_port=2376
             # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )
@@ -251,7 +251,10 @@ def init(ctx, port, cert_path):
         while not service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
             try:
                 response = http.get(
-                    url="http://{}:{}/status".format(ctx.meta["master_ip"], ctx.meta["master_port"]),
+                    url="http://{addr_}:{port_}/status".format(
+                        addr_=ctx.meta["master_host"],
+                        port_=ctx.meta["master_port"]
+                    ),
                     verify=False
                 )
                 service_status = response.content.decode("utf-8")
@@ -293,7 +296,7 @@ def reset(ctx, cert_path):
     if ctx.meta["orchestrator"] == "docker":
         docker_client = docker_utils.get_docker_client(
             cert_path=cert_path,
-            host_ip=ctx.meta["master_ip"],
+            host_addr=ctx.meta["master_host"],
             host_port=2376
             # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )
@@ -347,8 +350,8 @@ def pga():
 @pga.command()
 @click.pass_context
 @click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=True)
-@click.option("--manager-ip", "-m", "manager_ip", type=str, required=False)
-def create(ctx, configuration_file_path, manager_ip):
+@click.option("--manager-host", "-m", "manager_host", type=str, required=False)
+def create(ctx, configuration_file_path, manager_host):
     """
     Create a new PGA run.
 
@@ -356,20 +359,20 @@ def create(ctx, configuration_file_path, manager_ip):
             If not supplied, the default configuration will be run.
     :type configuration_file_path: str
 
-    :param manager_ip: the IP address or hostname of the PGA Manager node. Can also be set in the context, see 'config master_ip'.
-    :type manager_ip: str
+    :param manager_host: the IP address or hostname of the PGA Manager node. Can also be set in the context, see 'config master_host'.
+    :type manager_host: str
 
     :param ctx: the click cli context, automatically passed by cli.
 
     :return: generated PGA id
     """
     # Sets the manager IP if not provided.
-    if not manager_ip:
-        if not ctx.meta["master_ip"]:
-            raise Exception("No master host IP defined! You can define it by creating the cloud environment"
-                            "or by explicitly setting it with command 'client config master-ip'."
-                            "Type 'client config master-ip --help' for more details.")
-        manager_ip = ctx.meta["master_ip"]
+    if not manager_host:
+        if not ctx.meta["master_host"]:
+            raise Exception("No master host defined! You can define it by creating the cloud environment"
+                            "or by explicitly setting it with command 'client config master-host'."
+                            "Type 'client config master-host --help' for more details.")
+        manager_host = ctx.meta["master_host"]
 
     # Retrieves the configuration file.
     configuration = get_configuration(configuration_file_path)
@@ -398,7 +401,7 @@ def create(ctx, configuration_file_path, manager_ip):
 
     # Calls the manager API to create the PGA.
     response = http.post(
-        url="http://{}:{}/pga".format(manager_ip, ctx.meta["master_port"]),
+        url="http://{}:{}/pga".format(manager_host, ctx.meta["master_port"]),
         params={
             "config": configuration_file_path,
             "orchestrator": ctx.meta["orchestrator"]
@@ -406,6 +409,11 @@ def create(ctx, configuration_file_path, manager_ip):
         files=files,
         verify=False
     )
+    print(response.headers)
+    print(response.status_code)
+    print(response.elapsed)
+    # print(response.content)
+
     json_response = response.json()
     pga_id = json_response["id"]
 

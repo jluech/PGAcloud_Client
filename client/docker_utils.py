@@ -35,7 +35,7 @@ def print_image_history(image_tag):
             print("")
 
 
-def get_docker_client(cert_path, host_ip, host_port):
+def get_docker_client(cert_path, host_addr, host_port):
     global docker_client
     if docker_client:
         return docker_client
@@ -49,8 +49,8 @@ def get_docker_client(cert_path, host_ip, host_port):
         verify=True
     )
     docker_client = docker.DockerClient(
-        base_url="tcp://{ip_}:{port_}".format(
-            ip_=host_ip,
+        base_url="tcp://{addr_}:{port_}".format(
+            addr_=host_addr,
             port_=host_port
         ),
         tls=tls_config,
