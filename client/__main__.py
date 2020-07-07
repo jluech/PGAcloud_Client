@@ -487,10 +487,23 @@ def reset(ctx, cert_path):
         ssl_ca_id = ctx.meta["SSL_CA_PEM_ID"]
         ssl_cert_id = ctx.meta["SSL_CERT_PEM_ID"]
         ssl_key_id = ctx.meta["SSL_KEY_PEM_ID"]
-        docker_client.secrets.get(ssl_ca_id).remove()
-        docker_client.secrets.get(ssl_cert_id).remove()
-        docker_client.secrets.get(ssl_key_id).remove()
-        click.echo("Successfully removed docker secrets for SSL certificates.")
+        current_ssl_secrets = docker_client.secrets.list(filters={"id": [ssl_ca_id, ssl_cert_id, ssl_key_id]})
+        if current_ssl_secrets.__len__() > 0:
+            docker_client.secrets.get(ssl_ca_id).remove()
+            docker_client.secrets.get(ssl_cert_id).remove()
+            docker_client.secrets.get(ssl_key_id).remove()
+            click.echo("Successfully removed docker secrets for SSL certificates.")
+        else:
+            click.echo("No SSL secrets found that could be removed.")
+
+        # Removes the docker networks.
+        pga_networks = docker_client.networks.list(filters={"label": "PGAcloud"})
+        if pga_networks.__len__() > 0:
+            for network in pga_networks:
+                network.remove()
+            click.echo("Successfully removed PGA docker networks.")
+        else:
+            click.echo("No PGA docker networks found that could be removed.")
     else:
         click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
 
