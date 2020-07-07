@@ -38,8 +38,3 @@ echo ""
 
 # Update service with secrets for given certificates path and exit.
 docker -H tcp://$host:2376 -D --tlsverify --tlscacert $cert_path/ca.pem --tlscert $cert_path/cert.pem --tlskey $cert_path/key.pem service update --secret-add SSL_CA_PEM --secret-add SSL_CERT_PEM --secret-add SSL_KEY_PEM manager
-
-# Since "docker-machine ssh" opens another interactive shell, give execution feedback.
-echo ""
-echo ""
-read -p "Press ENTER to terminate:"
