@@ -20,7 +20,7 @@ if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
   exit 0
 fi
 
-# Assign positional parameters
+# Assign positional parameters.
 while [ "$1" != "" ]; do
     case $1 in
         -n | --name )       shift
@@ -41,16 +41,16 @@ while [ "$1" != "" ]; do
     shift
 done
 
-# Confirming input
+# Confirming input.
 echo "SSH into: $hostname"
 echo "Running container with image: $image:$tag"
 echo "Binding host port $port to container port 5000"
 echo ""
 
-# Run new container with given image on remote host and exit
+# Run new container with given image on remote host and exit.
 echo "docker image pull $image:$tag; docker run -d -p $port:5000 --name manager $image:$tag; exit" | docker-machine ssh $hostname
 
-# Since "docker-machine ssh" opens another interactive shell, give execution feedback
+# Since "docker-machine ssh" opens another interactive shell, give execution feedback.
 echo ""
 echo ""
 read -p "Press ENTER to terminate:"

@@ -1,5 +1,6 @@
 import os
 import time
+import traceback
 
 import click
 import logbook
@@ -17,6 +18,9 @@ CLIENT_CLI_CONTEXT_KEYS = [
     "master_host",
     "master_port",
     "cert_path",
+    "SSL_CA_PEM_ID",
+    "SSL_CERT_PEM_ID",
+    "SSL_KEY_PEM_ID",
 ]
 CLIENT_CLI_CONTEXT_DEFAULTS = {
     "orchestrator": "docker",
@@ -300,12 +304,42 @@ def init(ctx, port, cert_path):
 
     # Initializes the PGA manager via the selected orchestrator.
     if ctx.meta["orchestrator"] == "docker":
+        # Creates a docker client to issue docker commands via SSL connection.
         docker_client = docker_utils.get_docker_client(
             cert_path=cert_path,
             host_addr=ctx.meta["master_host"],
             host_port=2376
             # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )
+
+        # Creates docker secrets for sharing the SSL certificates.
+        ssl_ca_path = os.path.join(cert_path, "ca.pem")
+        ssl_cert_path = os.path.join(cert_path, "cert.pem")
+        ssl_key_path = os.path.join(cert_path, "key.pem")
+
+        try:
+            ssl_ca_file = open(ssl_ca_path, mode="rb")
+            ssl_ca_content = ssl_ca_file.read()
+            ssl_ca_file.close()
+            ssl_cert_file = open(ssl_cert_path, mode="rb")
+            ssl_cert_content = ssl_cert_file.read()
+            ssl_cert_file.close()
+            ssl_key_file = open(ssl_key_path, mode="rb")
+            ssl_key_content = ssl_key_file.read()
+            ssl_key_file.close()
+
+            ssl_ca = docker_client.secrets.create(name="SSL_CA_PEM", data=ssl_ca_content)
+            ssl_cert = docker_client.secrets.create(name="SSL_CERT_PEM", data=ssl_cert_content)
+            ssl_key = docker_client.secrets.create(name="SSL_KEY_PEM", data=ssl_key_content)
+
+            ctx.meta["SSL_CA_PEM_ID"] = ssl_ca.id
+            ctx.meta["SSL_CERT_PEM_ID"] = ssl_cert.id
+            ctx.meta["SSL_KEY_PEM_ID"] = ssl_key.id
+        except Exception as e:
+            traceback.print_exc()
+            logger.error(traceback.format_exc())
+
+        # Creates the manager service on the host.
         manager_service = docker_client.services.create(
             image="jluech/pga-cloud-manager",
             name="manager",
@@ -316,7 +350,22 @@ def init(ctx, port, cert_path):
             },
         )
 
-        # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is running.
+        # Updates the service with the new secrets.
+        script_path = os.path.join(os.getcwd(), "client/docker_service_update_secrets.sh")
+        script_args = "--certs {certs_} --host {host_}"
+        utils.execute_command(
+            command=script_path + " " + script_args.format(
+                certs_=cert_path,
+                host_=ctx.meta["master_host"]
+            ),
+            working_directory=os.curdir,
+            environment_variables=None,
+            executor=None,
+            logger=logger,
+            livestream=True
+        )
+
+        # Waits for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is running.
         service_running = False
         service_status = "NOK"
         exceeding = False
@@ -336,8 +385,7 @@ def init(ctx, port, cert_path):
             except:
                 pass
             finally:
-                # service_running = service_status == "OK"
-                service_running = (service_status == "Status: OK")
+                service_running = service_status == "OK"
 
             if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
                 click.echo("This is taking longer than usual...")
@@ -403,38 +451,46 @@ def reset(ctx, cert_path):
         found_services = docker_client.services.list(filters={"name": "manager"})
         if not found_services.__len__() > 0:
             click.echo("No manager running that could be removed.")
-            return
-
-        manager_service = found_services[0]
-        service_name = manager_service.name
-        manager_service.remove()
-
-        # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is not found anymore.
-        service_running = True
-        exceeding = False
-        troubled = False
-        duration = 0.0
-        start = time.perf_counter()
-        while service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
-            found_services = docker_client.services.list(filters={"name": "manager"})
-            service_running = (found_services.__len__() > 0)
-
-            if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
-                click.echo("This is taking longer than usual...")
-                exceeding = True  # only print this once
-
-            if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
-                click.echo("Oh come on! You can do it...")
-                troubled = True  # only print this once
-
-            time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
-            duration = time.perf_counter() - start
-
-        if duration >= WAIT_FOR_CONFIRMATION_DURATION:
-            click.echo("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
-                       "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
         else:
-            click.echo("Successfully removed service: {name_}".format(name_=service_name))
+            manager_service = found_services[0]
+            service_name = manager_service.name
+            manager_service.remove()
+
+            # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is not found anymore.
+            service_running = True
+            exceeding = False
+            troubled = False
+            duration = 0.0
+            start = time.perf_counter()
+            while service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
+                found_services = docker_client.services.list(filters={"name": "manager"})
+                service_running = (found_services.__len__() > 0)
+
+                if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
+                    click.echo("This is taking longer than usual...")
+                    exceeding = True  # only print this once
+
+                if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
+                    click.echo("Oh come on! You can do it...")
+                    troubled = True  # only print this once
+
+                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
+                duration = time.perf_counter() - start
+
+            if duration >= WAIT_FOR_CONFIRMATION_DURATION:
+                click.echo("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
+                           "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
+            else:
+                click.echo("Successfully removed service: {name_}".format(name_=service_name))
+
+        # Removes the docker secrets for the SSL certificates.
+        ssl_ca_id = ctx.meta["SSL_CA_PEM_ID"]
+        ssl_cert_id = ctx.meta["SSL_CERT_PEM_ID"]
+        ssl_key_id = ctx.meta["SSL_KEY_PEM_ID"]
+        docker_client.secrets.get(ssl_ca_id).remove()
+        docker_client.secrets.get(ssl_cert_id).remove()
+        docker_client.secrets.get(ssl_key_id).remove()
+        click.echo("Successfully removed docker secrets for SSL certificates.")
     else:
         click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
 

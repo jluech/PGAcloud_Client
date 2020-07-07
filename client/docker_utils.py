@@ -58,4 +58,5 @@ def get_docker_client(cert_path, host_addr, host_port):
     )
     return docker_client
 
+# docker secret rm $(docker secret ls --format "table {{.Name}}")
 # docker-machine rm $(docker-machine ls --f "table {{.Name}}")
