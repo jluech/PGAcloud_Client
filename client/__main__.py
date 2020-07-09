@@ -348,6 +348,7 @@ def init(ctx, port, cert_path):
                     {"Protocol": "tcp", "PublishedPort": port, "TargetPort": 5000},
                 ]
             },
+            hostname="manager"
         )
 
         # Updates the service with the new secrets.
@@ -627,21 +628,16 @@ def create(ctx, configuration_file_path, manager_host):
         url="http://{}:{}/pga".format(manager_host, ctx.meta["master_port"]),
         params={
             "config": configuration_file_path,
-            "orchestrator": ctx.meta["orchestrator"]
+            "orchestrator": ctx.meta["orchestrator"],
+            "master_host": ctx.meta["master_host"]
         },
         files=files,
         verify=False
     )
-    print(response.headers)
-    print(response.status_code)
-    print(response.elapsed)
-    # print(response.content)
 
     json_response = response.json()
     pga_id = json_response["id"]
-
     click.echo("Initialized new PGA with id: {}".format(pga_id))  # id is generated
-    return pga_id
 
 
 @pga.command()
