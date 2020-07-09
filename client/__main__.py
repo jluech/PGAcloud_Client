@@ -402,9 +402,9 @@ def init(ctx, port, cert_path):
             click.echo("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
                        "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
         else:
-            click.echo("Successfully created service: {name_}".format(name_=manager_service.name))
+            click.echo("Successfully created manager service.")
     else:
-        click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
+        click.echo("kubernetes orchestrator not implemented yet.")  # TODO 202: implement kubernetes orchestrator
 
     # Updates the meta context storage file.
     utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
@@ -448,23 +448,25 @@ def reset(ctx, cert_path):
             host_port=2376
             # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )
-        found_services = docker_client.services.list(filters={"name": "manager"})
+
+        # Removes the PGA service(s).
+        pga_services_filter = {"label": "PGAcloud"}
+        found_services = docker_client.services.list(filters=pga_services_filter)
         if not found_services.__len__() > 0:
-            click.echo("No manager running that could be removed.")
+            click.echo("No PGA services running that could be removed.")
         else:
-            manager_service = found_services[0]
-            service_name = manager_service.name
-            manager_service.remove()
+            for pga_service in found_services:
+                pga_service.remove()
 
             # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is not found anymore.
-            service_running = True
+            services_running = True
             exceeding = False
             troubled = False
             duration = 0.0
             start = time.perf_counter()
-            while service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
-                found_services = docker_client.services.list(filters={"name": "manager"})
-                service_running = (found_services.__len__() > 0)
+            while services_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
+                found_services = docker_client.services.list(filters=pga_services_filter)
+                services_running = (found_services.__len__() > 0)
 
                 if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
                     click.echo("This is taking longer than usual...")
@@ -481,7 +483,43 @@ def reset(ctx, cert_path):
                 click.echo("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
                            "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
             else:
-                click.echo("Successfully removed service: {name_}".format(name_=service_name))
+                click.echo("Successfully removed PGA services.")
+
+        # Removes the manager service(s).
+        manager_service_filter = {"name": "manager"}
+        found_manager_services = docker_client.services.list(filters=manager_service_filter)
+        if not found_manager_services.__len__() > 0:
+            click.echo("No manager running that could be removed.")
+        else:
+            manager_service = found_manager_services[0]
+            manager_service.remove()
+
+            # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is not found anymore.
+            service_running = True
+            exceeding = False
+            troubled = False
+            duration = 0.0
+            start = time.perf_counter()
+            while service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
+                found_manager_services = docker_client.services.list(filters=manager_service_filter)
+                service_running = (found_manager_services.__len__() > 0)
+
+                if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
+                    click.echo("This is taking longer than usual...")
+                    exceeding = True  # only print this once
+
+                if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
+                    click.echo("Oh come on! You can do it...")
+                    troubled = True  # only print this once
+
+                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
+                duration = time.perf_counter() - start
+
+            if duration >= WAIT_FOR_CONFIRMATION_DURATION:
+                click.echo("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
+                           "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
+            else:
+                click.echo("Successfully removed manager service.")
 
         # Removes the docker secrets for the SSL certificates.
         ssl_ca_id = ctx.meta["SSL_CA_PEM_ID"]
@@ -493,6 +531,9 @@ def reset(ctx, cert_path):
             docker_client.secrets.get(ssl_cert_id).remove()
             docker_client.secrets.get(ssl_key_id).remove()
             click.echo("Successfully removed docker secrets for SSL certificates.")
+            ctx.meta["SSL_CA_PEM_ID"] = ""
+            ctx.meta["SSL_CERT_PEM_ID"] = ""
+            ctx.meta["SSL_KEY_PEM_ID"] = ""
         else:
             click.echo("No SSL secrets found that could be removed.")
 
@@ -505,7 +546,7 @@ def reset(ctx, cert_path):
         else:
             click.echo("No PGA docker networks found that could be removed.")
     else:
-        click.echo("kubernetes orchestrator not implemented yet")  # TODO 202: implement kubernetes orchestrator
+        click.echo("kubernetes orchestrator not implemented yet!")  # TODO 202: implement kubernetes orchestrator
 
     # Updates the meta context storage file.
     utils.store_context(ctx.meta, CLIENT_CLI_CONTEXT_FILE)
