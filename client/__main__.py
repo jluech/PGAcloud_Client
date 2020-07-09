@@ -567,7 +567,7 @@ def pga():
 
 @pga.command()
 @click.pass_context
-@click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=False)
+@click.argument("configuration_file_path", type=click.Path(exists=True), required=False)
 @click.option("--manager-host", "-m", "manager_host", type=str, required=False)
 def create(ctx, configuration_file_path, manager_host):
     """
