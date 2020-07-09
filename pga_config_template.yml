@@ -18,11 +18,17 @@ services: {
 }
 
 
-# List all images of components involved, including their initial scaling.
-# Those in uppercase are predefined default operators.
-images: {
+# List of setup components, including their initial scaling.
+# Those in uppercase are predefined default setup components.
+setups: {
   RUN:  {name: 'runner', image: 'jluech/pga-cloud-runner', scaling: 1},
   INIT: {name: 'initializer', image: 'jluech/pga-cloud-initializer', scaling: 2},
+}
+
+
+# List all images of operators involved, including their initial scaling.
+# Those in uppercase are predefined default operators.
+operators: {
   SEL:  {name: 'selection', image: 'jluech/pga-cloud-selection', scaling: 1},
   CO:   {name: 'crossover', image: 'jluech/pga-cloud-crossover', scaling: 1},
   MUT:  {name: 'mutation', image: 'jluech/pga-cloud-mutation', scaling: 1},
