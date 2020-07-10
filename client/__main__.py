@@ -340,15 +340,17 @@ def init(ctx, port, cert_path):
             logger.error(traceback.format_exc())
 
         # Creates the manager service on the host.
-        manager_service = docker_client.services.create(
+        bridge_network = docker_utils.get_bridge_network()
+        docker_client.services.create(
             image="jluech/pga-cloud-manager",
             name="manager",
+            hostname="manager",
+            networks=[bridge_network.name],
             endpoint_spec={
                 "Ports": [
                     {"Protocol": "tcp", "PublishedPort": port, "TargetPort": 5000},
                 ]
             },
-            hostname="manager"
         )
 
         # Updates the service with the new secrets.
