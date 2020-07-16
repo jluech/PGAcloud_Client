@@ -70,7 +70,7 @@ def get_bridge_network():
     # Creates a new docker network to bridge the manager to a connector.
     __bridge_network = __docker_client.networks.create(
         name="bridge-pga",
-        driver="bridge",
+        driver="overlay",
         check_duplicate=True,
         attachable=True,
         scope="swarm",
