@@ -10,7 +10,7 @@ from client import docker_utils, utils
 from client.provider_drivers.vSphere_driver import VSphereDockerDriver
 
 logger = logbook.Logger('client')
-http = requests.sessions.Session()
+http = requests.Session()
 
 CLIENT_CLI_CONTEXT_FILE = os.getcwd() + "\\client\\cli_context.yml"
 CLIENT_CLI_CONTEXT_KEYS = [
@@ -218,7 +218,7 @@ def cloud(ctx, orchestrator):
 @click.option("--provider", "-p", "provider_name",
               type=click.Choice(["amazon", "openstack", "virtualbox", "vsphere"]),
               default="vsphere")
-@click.option("--configuration", "-c", "configuration_file_path", type=click.Path(exists=True), required=True)
+@click.argument("configuration_file_path", type=click.Path(exists=True), required=True)
 def create(ctx, provider_name, configuration_file_path):
     """
     Create and setup the cloud environment.
@@ -349,7 +349,7 @@ def init(ctx, port, cert_path):
             endpoint_spec={
                 "Ports": [
                     {"Protocol": "tcp", "PublishedPort": port, "TargetPort": 5000},
-                ]
+                ],
             },
         )
 
