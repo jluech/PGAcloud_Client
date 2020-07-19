@@ -2,8 +2,11 @@ from setuptools import setup, find_packages
 
 requirements = [
     "click",
+    "docker[tls]",
     "logbook",
-    "PyYAML"
+    "PyYAML",
+    "requests",
+    "virtualenv"
 ]
 
 setup(
@@ -15,7 +18,7 @@ setup(
     include_package_data=True,
     install_requires=requirements,
     entry_points={
-        "console_scripts": ["client=client.client:client"]
+        "console_scripts": ["client=client.__main__:client"]
     }
 )
 

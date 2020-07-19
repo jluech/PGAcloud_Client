@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Required command parameters
+# Required command parameters.
 vcenter=
 user=
 pw=
@@ -21,7 +21,7 @@ if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
   exit 0
 fi
 
-# Assign positional parameters
+# Assign positional parameters.
 while [ "$1" != "" ]; do
     case $1 in
         -n | --name )       shift
@@ -42,14 +42,14 @@ while [ "$1" != "" ]; do
     shift
 done
 
-# Host node settings
+# Host node settings.
 memory_size_MB=4096 # default: 2048
 disk_size_MB=28672  # default: 20'000
 cpu_count=2         # default: 2
 
 worker_count=3      # amount of worker nodes
 
-# Creating master node
+# Creating master node.
 echo "### Creating master node ..."
 docker-machine create \
 	--driver vmwarevsphere \
@@ -61,15 +61,16 @@ docker-machine create \
 	--vmwarevsphere-disk-size=$disk_size_MB \
 	--vmwarevsphere-cpu-count=$cpu_count \
 	--swarm-master \
+	--engine-label cloud_master=1 \
 	dockermaster
 echo ""
 
-# Get IP from master node
+# Get IP from master node.
 echo "### Saving master ip ..."
 master_ip=$(docker-machine ip dockermaster)
 echo ""
 
-# Creating worker nodes
+# Creating worker nodes.
 echo "### Creating worker nodes ..."
 for (( c=1; c<=$worker_count; c++ ))
 do
@@ -83,24 +84,25 @@ do
     --vmwarevsphere-disk-size=$disk_size_MB \
     --vmwarevsphere-cpu-count=$cpu_count \
     --swarm \
+    --engine-label cloud_master=0 \
     dockerworker$c
   echo "-- $c/$worker_count done"
   echo ""
 done
 echo ""
 
-# Init docker swarm mode
+# Init docker swarm mode.
 echo "### Initializing swarm master ..."
 eval $(docker-machine env dockermaster)
 docker swarm init
 echo ""
 
-# Swarm tokens
+# Swarm tokens.
 echo "### Saving swarm join tokens ..."
 worker_token=$(docker swarm join-token worker -q)
 echo ""
 
-# Join worker nodes
+# Join worker nodes.
 echo "### Joining worker nodes ..."
 for (( c=1; c<=$worker_count; c++ ))
 do
