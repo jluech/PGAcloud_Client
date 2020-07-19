@@ -341,6 +341,7 @@ def init(ctx, port, cert_path):
 
         # Creates the manager service on the host.
         bridge_network = docker_utils.get_bridge_network()
+        click.echo("--- Creating manager service.")
         docker_client.services.create(
             image="jluech/pga-cloud-manager",
             name="manager",
@@ -355,6 +356,7 @@ def init(ctx, port, cert_path):
         )
 
         # Updates the service with the new secrets.
+        click.echo("--- Updating with SSL secrets.")
         script_path = os.path.join(os.getcwd(), "client/docker_service_update_secrets.sh")
         script_args = "--certs {certs_} --host {host_}"
         utils.execute_command(
@@ -562,6 +564,8 @@ def destroy():
     Remove the cloud environment and all its PGA contents.
     """
     click.echo("cloud destroy")  # TODO 105: extend client cli with cloud teardown
+    # cloud reset
+    # remove nodes, but only the ones from PGA project (may contain other nodes)
 
 
 @client.group()
@@ -690,6 +694,10 @@ def stop(pga_id):
     :type pga_id: int
     """
     click.echo("pga stop {}".format(pga_id))  # TODO 108: extend client cli with runner teardown
+    # PGA services, but only from this PGA
+    # PGA network
+    # configs or shared files
+    # secrets/SSL auth MUST remain for other PGAs
 
 
 def get_configuration(configuration_file_path):
