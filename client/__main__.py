@@ -543,6 +543,24 @@ def reset(ctx, cert_path):
         else:
             click.echo("No SSL secrets found that could be removed.")
 
+        # Removes the docker configs used for file sharing.
+        current_configs = docker_client.configs.list(filters={"label": "PGAcloud"})
+        if current_configs.__len__() > 0:
+            counter = 0
+            while current_configs.__len__() > 0 and counter < 20:
+                for conf in current_configs:
+                    conf.remove()
+                current_configs = docker_client.configs.list(filters={"label": "PGAcloud"})
+                counter = counter + 1
+
+            if counter >= 20:
+                click.echo("We seem to have encountered an error when removing the docker configs. "
+                           "Please verify or try again shortly.")
+            else:
+                click.echo("Successfully removed docker configs.")
+        else:
+            click.echo("No docker configs found that could be removed.")
+
         # Removes the docker networks.
         pga_networks = docker_client.networks.list(filters={"label": "PGAcloud"})
         if pga_networks.__len__() > 0:
