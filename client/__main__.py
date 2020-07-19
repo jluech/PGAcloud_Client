@@ -351,6 +351,7 @@ def init(ctx, port, cert_path):
                     {"Protocol": "tcp", "PublishedPort": port, "TargetPort": 5000},
                 ],
             },
+            mounts=["/var/run/docker.sock:/var/run/docker.sock:rw"],  # enable docker commands inside manager container
         )
 
         # Updates the service with the new secrets.
