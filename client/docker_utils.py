@@ -78,5 +78,3 @@ def get_bridge_network():
     )
     return __bridge_network
 
-# docker secret rm $(docker secret ls --format "table {{.Name}}")
-# docker-machine rm $(docker-machine ls --f "table {{.Name}}")
