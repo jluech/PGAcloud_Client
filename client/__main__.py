@@ -6,8 +6,8 @@ import click
 import logbook
 import requests
 
-from client import docker_utils, utils
 from client.provider_drivers.vSphere_driver import VSphereDockerDriver
+from utilities import docker_utils, utils
 
 logger = logbook.Logger('client')
 http = requests.Session()
@@ -357,7 +357,7 @@ def init(ctx, port, cert_path):
 
         # Updates the service with the new secrets.
         click.echo("--- Updating with SSL secrets.")
-        script_path = os.path.join(os.getcwd(), "client/docker_service_update_secrets.sh")
+        script_path = os.path.join(os.getcwd(), "utilities/docker_service_update_secrets.sh")
         script_args = "--certs {certs_} --host {host_}"
         utils.execute_command(
             command=script_path + " " + script_args.format(

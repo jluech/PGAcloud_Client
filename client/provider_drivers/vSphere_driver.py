@@ -1,7 +1,7 @@
 import os
 
 from client.provider_drivers.abstract_driver import AbstractDriver
-from client.utils import execute_command
+from utilities.utils import execute_command
 
 CREATE_CLOUD_SCRIPT_PATH = "./client/provider_drivers/create_vsphere_docker.sh"
 CREATE_CLOUD_PARAMS = "-n {name_} -u {user_} -p {pw_} -d {datastore_}"
