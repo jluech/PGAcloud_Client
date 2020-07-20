@@ -536,7 +536,7 @@ def reset(ctx, cert_path):
                 click.echo("Successfully removed manager service.")
 
         # Removes the docker secrets for the SSL certificates.
-        ssl_secrets_by_label = docker_client.secrets.list(filters={"labels": "PGAcloud=Manager"})
+        ssl_secrets_by_label = docker_client.secrets.list(filters={"label": "PGAcloud=Manager"})
         if ssl_secrets_by_label.__len__() > 0:
             for secret in ssl_secrets_by_label:
                 secret.remove()
@@ -594,8 +594,8 @@ def pga():
 
 @pga.command()
 @click.pass_context
-@click.argument("configuration_file_path", type=click.Path(exists=True), required=False)
 @click.option("--manager-host", "-m", "manager_host", type=str, required=False)
+@click.argument("configuration_file_path", type=click.Path(exists=True), required=False)
 def create(ctx, configuration_file_path, manager_host):
     """
     Create a new PGA run.
