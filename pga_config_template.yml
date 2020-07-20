@@ -45,11 +45,13 @@ population: {
 
 # Properties for PGA execution.
 # Define at least the predefined ones (uppercase), but can also include custom properties for custom operators.
+# You can set USE_INIT=True to ensure deployment of INITs even if not used for generating the initial population.
 properties: {
   USE_INIT: False,
-  MAX_GENERATION: 1500,
-  MAX_TIME_SECONDS: 600,
+  MAX_GENERATIONS: 1500,
   MAX_UNCHANGED_GENERATIONS: 300,
+  MAX_TIME_SECONDS: 600,
+  POPULATION_SIZE: 100,
   MUTATION_RATE: 0.3,
   CROSSOVER_RATE: 0.5,
   ELITISM_RATE: 0.05,
