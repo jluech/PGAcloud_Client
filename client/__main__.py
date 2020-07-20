@@ -328,13 +328,21 @@ def init(ctx, port, cert_path):
             ssl_key_content = ssl_key_file.read()
             ssl_key_file.close()
 
-            ssl_ca = docker_client.secrets.create(name="SSL_CA_PEM", data=ssl_ca_content)
-            ssl_cert = docker_client.secrets.create(name="SSL_CERT_PEM", data=ssl_cert_content)
-            ssl_key = docker_client.secrets.create(name="SSL_KEY_PEM", data=ssl_key_content)
-
-            ctx.meta["SSL_CA_PEM_ID"] = ssl_ca.id
-            ctx.meta["SSL_CERT_PEM_ID"] = ssl_cert.id
-            ctx.meta["SSL_KEY_PEM_ID"] = ssl_key.id
+            docker_client.secrets.create(
+                name="SSL_CA_PEM",
+                data=ssl_ca_content,
+                labels={"PGAcloud": "Manager"},
+            )
+            docker_client.secrets.create(
+                name="SSL_CERT_PEM",
+                data=ssl_cert_content,
+                labels={"PGAcloud": "Manager"},
+            )
+            docker_client.secrets.create(
+                name="SSL_KEY_PEM",
+                data=ssl_key_content,
+                labels={"PGAcloud": "Manager"},
+            )
         except Exception as e:
             traceback.print_exc()
             logger.error(traceback.format_exc())
@@ -528,18 +536,11 @@ def reset(ctx, cert_path):
                 click.echo("Successfully removed manager service.")
 
         # Removes the docker secrets for the SSL certificates.
-        ssl_ca_id = ctx.meta["SSL_CA_PEM_ID"]
-        ssl_cert_id = ctx.meta["SSL_CERT_PEM_ID"]
-        ssl_key_id = ctx.meta["SSL_KEY_PEM_ID"]
-        current_ssl_secrets = docker_client.secrets.list(filters={"id": [ssl_ca_id, ssl_cert_id, ssl_key_id]})
-        if current_ssl_secrets.__len__() > 0:
-            docker_client.secrets.get(ssl_ca_id).remove()
-            docker_client.secrets.get(ssl_cert_id).remove()
-            docker_client.secrets.get(ssl_key_id).remove()
+        ssl_secrets_by_label = docker_client.secrets.list(filters={"labels": "PGAcloud=Manager"})
+        if ssl_secrets_by_label.__len__() > 0:
+            for secret in ssl_secrets_by_label:
+                secret.remove()
             click.echo("Successfully removed docker secrets for SSL certificates.")
-            ctx.meta["SSL_CA_PEM_ID"] = ""
-            ctx.meta["SSL_CERT_PEM_ID"] = ""
-            ctx.meta["SSL_KEY_PEM_ID"] = ""
         else:
             click.echo("No SSL secrets found that could be removed.")
 
