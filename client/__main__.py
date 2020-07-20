@@ -653,7 +653,6 @@ def create(ctx, configuration_file_path, manager_host):
     response = http.post(
         url="http://{}:{}/pga".format(manager_host, ctx.meta["master_port"]),
         params={
-            "config": configuration_file_path,
             "orchestrator": ctx.meta["orchestrator"],
             "master_host": ctx.meta["master_host"]
         },
