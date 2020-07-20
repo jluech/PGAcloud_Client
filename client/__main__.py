@@ -612,7 +612,7 @@ def create(ctx, configuration_file_path, manager_host):
 
     :return: generated PGA id
     """
-    # Sets the manager IP if not provided.
+    # Sets the manager host if not provided.
     if not manager_host:
         if not ctx.meta["master_host"]:
             raise Exception("No master host defined! You can define it by creating the cloud environment "
@@ -666,15 +666,44 @@ def create(ctx, configuration_file_path, manager_host):
 
 
 @pga.command()
+@click.pass_context
 @click.argument("pga_id", type=int)
-def run(pga_id):
+def run(ctx, pga_id):
     """
     Start computation of given PGA.
 
     :param pga_id: the id of the PGA to run, retrieved from initialization.
     :type pga_id: int
+
+    :param ctx: the click cli context, automatically passed by cli.
     """
-    click.echo("pga run {}".format(pga_id))  # TODO 106: extend client cli with runner start
+    # Checks for the manager host and port and raises if not yet defined.
+    if not ctx.meta["master_host"]:
+        raise Exception("No master host defined! You can define it by creating the cloud environment "
+                        "or by explicitly setting it with command 'client config master-host'. "
+                        "Type 'client config master-host --help' for more details.")
+    if not ctx.meta["master_port"]:
+        raise Exception("No master port defined! You can define it by initializing the cloud manager "
+                        "or by explicitly setting it with command 'client config master-port'. "
+                        "Type 'client config master-port --help' for more details.")
+
+    # Calls the manager API to start the PGA.
+    response = http.put(
+        url="http://{host_}:{port_}/{pga_}/start}".format(
+            host_=ctx.meta["master_host"],
+            port_=ctx.meta["master_port"],
+            pga_=pga_id
+        ),
+        params={
+            "orchestrator": ctx.meta["orchestrator"],
+            "master_host": ctx.meta["master_host"],
+        },
+        verify=False
+    )
+
+    json_response = response.json()
+    pga_id = json_response["id"]
+    click.echo("Started PGA with id: {}".format(pga_id))
 
 
 @pga.command()
