@@ -37,14 +37,14 @@ def get_management_network():
     if not __docker_client:
         raise Exception("Create a docker client first, before creating a network...")
 
-    # Creates a new docker network to bridge the manager to a connector.
+    # Creates a new docker network to bridge the manager to the runners.
     __management_network = __docker_client.networks.create(
         name="pga-management",
         driver="overlay",
         check_duplicate=True,
         attachable=True,
         scope="swarm",
-        labels={"PGAcloud": "PGA-Connection"},
+        labels={"PGAcloud": "PGA-Management"},
     )
     return __management_network
 
