@@ -625,6 +625,7 @@ def create(ctx, configuration_file_path, manager_host):
         configuration_file_path = os.path.join(os.getcwd(), "pga_config_template.yml")
 
     # Retrieves the configuration file.
+    click.echo("--- Retrieving configuration and additional files.")
     configuration = get_configuration(configuration_file_path)
     use_population = configuration.get("population").get("use_initial_population")
     if use_population:
@@ -650,6 +651,7 @@ def create(ctx, configuration_file_path, manager_host):
     files["config"] = open(configuration_file_path, "r")
 
     # Calls the manager API to create the PGA.
+    click.echo("--- Requesting PGA setup.")
     response = http.post(
         url="http://{}:{}/pga".format(manager_host, ctx.meta["master_port"]),
         params={
