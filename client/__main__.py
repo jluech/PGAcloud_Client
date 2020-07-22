@@ -670,7 +670,7 @@ def create(ctx, configuration_file_path, manager_host):
 @pga.command()
 @click.pass_context
 @click.argument("pga_id", type=int)
-def run(ctx, pga_id):
+def start(ctx, pga_id):
     """
     Start computation of given PGA.
 
@@ -691,10 +691,10 @@ def run(ctx, pga_id):
 
     # Calls the manager API to start the PGA.
     response = http.put(
-        url="http://{host_}:{port_}/{pga_}/start}".format(
+        url="http://{host_}:{port_}/pga/{id_}/start".format(
             host_=ctx.meta["master_host"],
             port_=ctx.meta["master_port"],
-            pga_=pga_id
+            id_=pga_id
         ),
         params={
             "orchestrator": ctx.meta["orchestrator"],
@@ -705,7 +705,11 @@ def run(ctx, pga_id):
 
     json_response = response.json()
     pga_id = json_response["id"]
-    click.echo("Started PGA with id: {}".format(pga_id))
+    status = json_response["status"]
+    click.echo("Started PGA with id: {id_} ({status_})".format(
+        id_=pga_id,
+        status_=status
+    ))
 
 
 @pga.command()
