@@ -5,7 +5,8 @@
 # https://symfony.com/doc/current/components/yaml/yaml_format.html
 
 # TODO 204: implement island model
-# Predefined models: "Master-Slave" and "Island" (not ready yet). Declare custom models representing one generation cycle.
+# Predefined models: "Master-Slave" (only model that is currently usable) and "Island".
+# Declare custom models representing one generation cycle.
 # Use "/" as separator and ensure first/last image being the runner, e.g., "RUN/SEL/CO/MUT/FE/RUN".
 model: 'Master-Slave'
 
@@ -21,18 +22,18 @@ services: {
 # List of setup components, including their initial scaling.
 # Those in uppercase are predefined default setup components.
 setups: {
-  RUN:  {name: 'runner', image: 'jluech/pga-cloud-runner', scaling: 1, messaging: "generation"},
-  INIT: {name: 'initializer', image: 'jluech/pga-cloud-initializer', scaling: 2, messaging: "initializer"},
+  RUN:  {name: 'runner', image: 'jluech/pga-cloud-runner', scaling: 1, messaging: 'generation'},
+  INIT: {name: 'initializer', image: 'jluech/pga-cloud-initializer', scaling: 2, messaging: 'initializer'},
 }
 
 
 # List all images of operators involved, including their initial scaling and messaging access (e.g., queue name for rabbitMQ).
 # Those in uppercase are predefined default operators.
 operators: {
-  SEL:  {name: 'selection', image: 'jluech/pga-cloud-selection', scaling: 1, messaging: "selection"},
-  CO:   {name: 'crossover', image: 'jluech/pga-cloud-crossover', scaling: 1, messaging: "crossover"},
-  MUT:  {name: 'mutation', image: 'jluech/pga-cloud-mutation', scaling: 1, messaging: "mutation"},
-  FE:   {name: 'fitness', image: 'jluech/pga-cloud-fitness', scaling: 3, messaging: "fitness"},
+  SEL:  {name: 'selection', image: 'jluech/pga-cloud-selection', scaling: 1, messaging: 'selection'},
+  CO:   {name: 'crossover', image: 'jluech/pga-cloud-crossover', scaling: 1, messaging: 'crossover'},
+  MUT:  {name: 'mutation', image: 'jluech/pga-cloud-mutation', scaling: 1, messaging: 'mutation'},
+  FE:   {name: 'fitness', image: 'jluech/pga-cloud-fitness', scaling: 3, messaging: 'fitness'},
 }
 
 
