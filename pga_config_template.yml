@@ -38,6 +38,9 @@ operators: {
 
 
 # Settings for providing an initial population.
+# Define your population only by the solution strings, like so:
+# individuals:
+# - "<solution string>"
 population: {
   use_initial_population: False,
   population_file_path: ''
