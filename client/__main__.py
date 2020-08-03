@@ -331,17 +331,17 @@ def init(ctx, port, cert_path):
             docker_client.secrets.create(
                 name="SSL_CA_PEM",
                 data=ssl_ca_content,
-                labels={"PGAcloud": "Manager"},
+                labels={"PGAcloud": "PGA-Management"},
             )
             docker_client.secrets.create(
                 name="SSL_CERT_PEM",
                 data=ssl_cert_content,
-                labels={"PGAcloud": "Manager"},
+                labels={"PGAcloud": "PGA-Management"},
             )
             docker_client.secrets.create(
                 name="SSL_KEY_PEM",
                 data=ssl_key_content,
-                labels={"PGAcloud": "Manager"},
+                labels={"PGAcloud": "PGA-Management"},
             )
         except Exception as e:
             traceback.print_exc()
@@ -464,8 +464,8 @@ def reset(ctx, cert_path):
         )
 
         # Removes the PGA service(s).
-        pga_services_filter = {"label": "PGAcloud"}
-        found_services = docker_client.services.list(filters=pga_services_filter)
+        pgacloud_label_filter = {"label": "PGAcloud"}
+        found_services = docker_client.services.list(filters=pgacloud_label_filter)
         if not found_services.__len__() > 0:
             click.echo("No PGA services running that could be removed.")
         else:
@@ -473,23 +473,10 @@ def reset(ctx, cert_path):
                 pga_service.remove()
 
             # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is not found anymore.
-            services_running = True
-            exceeding = False
-            troubled = False
             duration = 0.0
             start = time.perf_counter()
-            while services_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
-                found_services = docker_client.services.list(filters=pga_services_filter)
-                services_running = (found_services.__len__() > 0)
-
-                if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
-                    click.echo("This is taking longer than usual...")
-                    exceeding = True  # only print this once
-
-                if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
-                    click.echo("Oh come on! You can do it...")
-                    troubled = True  # only print this once
-
+            while found_services.__len__() > 0 and duration < WAIT_FOR_CONFIRMATION_DURATION:
+                found_services = docker_client.services.list(filters=pgacloud_label_filter)
                 time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
                 duration = time.perf_counter() - start
 
@@ -509,23 +496,10 @@ def reset(ctx, cert_path):
             manager_service.remove()
 
             # Wait for WAIT_FOR_CONFIRMATION_DURATION seconds or until manager service is not found anymore.
-            service_running = True
-            exceeding = False
-            troubled = False
             duration = 0.0
             start = time.perf_counter()
-            while service_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
+            while found_manager_services.__len__() > 0 and duration < WAIT_FOR_CONFIRMATION_DURATION:
                 found_manager_services = docker_client.services.list(filters=manager_service_filter)
-                service_running = (found_manager_services.__len__() > 0)
-
-                if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
-                    click.echo("This is taking longer than usual...")
-                    exceeding = True  # only print this once
-
-                if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
-                    click.echo("Oh come on! You can do it...")
-                    troubled = True  # only print this once
-
                 time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
                 duration = time.perf_counter() - start
 
@@ -536,25 +510,40 @@ def reset(ctx, cert_path):
                 click.echo("Successfully removed manager service.")
 
         # Removes the docker secrets for the SSL certificates.
-        ssl_secrets_by_label = docker_client.secrets.list(filters={"label": "PGAcloud=Manager"})
-        if ssl_secrets_by_label.__len__() > 0:
-            for secret in ssl_secrets_by_label:
+        current_secrets = docker_client.secrets.list(filters={"label": "PGAcloud"})
+        if current_secrets.__len__() > 0:
+            for secret in current_secrets:
                 secret.remove()
-            click.echo("Successfully removed docker secrets for SSL certificates.")
+
+            timer = 0
+            start = time.perf_counter()
+            while current_secrets.__len__() > 0 and timer < WAIT_FOR_CONFIRMATION_DURATION:
+                current_secrets = docker_client.secrets.list(filters=pgacloud_label_filter)
+                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)
+                timer = time.perf_counter() - start
+
+            if timer >= WAIT_FOR_CONFIRMATION_DURATION:
+                click.echo("We seem to have encountered an error when removing the docker secrets. "
+                           "Please verify or try again shortly.")
+            else:
+                click.echo("Successfully removed docker secrets for SSL certificates.")
         else:
             click.echo("No SSL secrets found that could be removed.")
 
         # Removes the docker configs used for file sharing.
-        current_configs = docker_client.configs.list(filters={"label": "PGAcloud"})
+        current_configs = docker_client.configs.list(filters=pgacloud_label_filter)
         if current_configs.__len__() > 0:
-            counter = 0
-            while current_configs.__len__() > 0 and counter < 20:
-                for conf in current_configs:
-                    conf.remove()
-                current_configs = docker_client.configs.list(filters={"label": "PGAcloud"})
-                counter = counter + 1
+            for conf in current_configs:
+                conf.remove()
 
-            if counter >= 20:
+            timer = 0
+            start = time.perf_counter()
+            while current_configs.__len__() > 0 and timer < WAIT_FOR_CONFIRMATION_DURATION:
+                current_configs = docker_client.configs.list(filters=pgacloud_label_filter)
+                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)
+                timer = time.perf_counter() - start
+
+            if timer >= WAIT_FOR_CONFIRMATION_DURATION:
                 click.echo("We seem to have encountered an error when removing the docker configs. "
                            "Please verify or try again shortly.")
             else:
@@ -563,11 +552,23 @@ def reset(ctx, cert_path):
             click.echo("No docker configs found that could be removed.")
 
         # Removes the docker networks.
-        pga_networks = docker_client.networks.list(filters={"label": "PGAcloud"})
+        pga_networks = docker_client.networks.list(filters=pgacloud_label_filter)
         if pga_networks.__len__() > 0:
             for network in pga_networks:
                 network.remove()
-            click.echo("Successfully removed PGA docker networks.")
+
+            timer = 0
+            start = time.perf_counter()
+            while pga_networks.__len__() > 0 and timer < WAIT_FOR_CONFIRMATION_DURATION:
+                pga_networks = docker_client.networks.list(filters=pgacloud_label_filter)
+                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
+                timer = time.perf_counter() - start
+
+            if timer >= WAIT_FOR_CONFIRMATION_DURATION:
+                click.echo("We seem to have encountered an error when removing the docker networks. "
+                           "Please verify or try again shortly.")
+            else:
+                click.echo("Successfully removed PGA docker networks.")
         else:
             click.echo("No PGA docker networks found that could be removed.")
     else:
