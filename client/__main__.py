@@ -1,3 +1,4 @@
+import json
 import os
 import time
 import traceback
@@ -710,9 +711,15 @@ def start(ctx, pga_id):
     json_response = response.json()
     pga_id = json_response["id"]
     status = json_response["status"]
+    fittest_dict = json.loads(json_response["fittest"])
     click.echo("Finished PGA {id_} (status={status_})".format(
         id_=pga_id,
         status_=status
+    ))
+
+    click.echo("Fittest individual has solution '{sol_}' with fitness {fit_}".format(
+        sol_=fittest_dict.get("solution"),
+        fit_=fittest_dict.get("fitness"),
     ))
 
 
