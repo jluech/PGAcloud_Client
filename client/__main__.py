@@ -665,7 +665,7 @@ def create(ctx, configuration_file_path, manager_host):
 
     json_response = response.json()
     pga_id = json_response["id"]
-    click.echo("Initialized new PGA with id: {}".format(pga_id))  # id is generated
+    click.echo("Initialized new PGA with id: {}".format(pga_id))
 
 
 @pga.command()
@@ -691,6 +691,9 @@ def start(ctx, pga_id):
                         "Type 'client config master-port --help' for more details.")
 
     # Calls the manager API to start the PGA.
+    click.echo("--- Starting PGA {id_}.".format(
+        id_=pga_id,
+    ))
     response = http.put(
         url="http://{host_}:{port_}/pga/{id_}/start".format(
             host_=ctx.meta["master_host"],
@@ -707,7 +710,7 @@ def start(ctx, pga_id):
     json_response = response.json()
     pga_id = json_response["id"]
     status = json_response["status"]
-    click.echo("Started PGA with id: {id_} ({status_})".format(
+    click.echo("Finished PGA {id_} (status={status_})".format(
         id_=pga_id,
         status_=status
     ))
@@ -739,19 +742,54 @@ def pause(pga_id):
 
 
 @pga.command()
+@click.pass_context
+@click.option("--manager-host", "-m", "manager_host", type=str, required=False)
 @click.argument("pga_id", type=int)
-def stop(pga_id):
+def stop(ctx, manager_host, pga_id):
     """
     Stop computation of given PGA and remove it.
 
+    :param manager_host: the IP address or hostname of the PGA Manager node.
+            Can also be set in the context, see 'config master_host'.
+    :type manager_host: str
+
     :param pga_id: the id of the PGA to monitor, retrieved from initialization.
     :type pga_id: int
+
+    :param ctx: the click cli context, automatically passed by cli.
     """
-    click.echo("pga stop {}".format(pga_id))  # TODO 108: extend client cli with runner teardown
-    # PGA services, but only from this PGA
-    # PGA network
-    # configs or shared files
-    # secrets/SSL auth MUST remain for other PGAs
+    # Sets the manager host if not provided.
+    if not manager_host:
+        if not ctx.meta["master_host"]:
+            raise Exception("No master host defined! You can define it by creating the cloud environment "
+                            "or by explicitly setting it with command 'client config master-host'. "
+                            "Type 'client config master-host --help' for more details.")
+        manager_host = ctx.meta["master_host"]
+
+    # Calls the manager API to stop and remove the PGA.
+    click.echo("--- Terminating PGA {id_}.".format(
+        id_=pga_id,
+    ))
+    response = http.put(
+        url="http://{host_}:{port_}/pga/{id_}/stop".format(
+            host_=ctx.meta["master_host"],
+            port_=ctx.meta["master_port"],
+            id_=pga_id
+        ),
+        params={
+            "orchestrator": ctx.meta["orchestrator"],
+            "master_host": ctx.meta["master_host"]
+        },
+        verify=False
+    )
+
+    json_response = response.json()
+    pga_id = json_response["id"]
+    status = json_response["status"]
+    click.echo("Stopped PGA with id: {id_} (status={status_})".format(
+        id_=pga_id,
+        status_=status
+    ))
 
 
 def get_configuration(configuration_file_path):
