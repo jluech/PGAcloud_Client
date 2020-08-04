@@ -161,6 +161,7 @@ def master_port(ctx, port):
 def certificates(ctx, cert_path):
     """
     Update the configuration for the path to the SSL certificates required for secure connection to cloud master host.
+    At the given location, the files 'ca.pem', 'cert.pem' and 'key.pem' must be found to establish a valid connection.
     If no argument is provided, it will print the current configuration.
 
     :param cert_path: the path to the certificates.
