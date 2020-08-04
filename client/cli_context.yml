@@ -1,4 +1,4 @@
 orchestrator: docker
-master_host: 192.168.2.59
+master_host: {}
 master_port: 5000
-cert_path: C:/Users/jluec/Desktop/master_pem/
+cert_path: {}
