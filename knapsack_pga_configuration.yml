@@ -1,0 +1,70 @@
+# Configuration used to solve an example of the Knapsack problem.
+
+# Predefined models: "Master-Slave" (only model that is currently usable) and "Island".
+# Declare custom models representing one generation cycle.
+# Use "/" as separator and ensure first/last image being the runner, e.g., "RUN/SEL/CO/MUT/FE/RUN".
+model: 'Master-Slave'
+
+
+# List of inter-component services to use in the PGA, including their initial scaling.
+# Those in uppercase are predefined default services.
+services: {
+  MSG: {name: 'rabbitMQ', image: 'rabbitmq:3.8-alpine', scaling: ''},
+  DB: {name: 'redis', image: 'redis:6.0-alpine', scaling: ''},
+}
+
+
+# List of setup components, including their initial scaling.
+# Those in uppercase are predefined default setup components.
+setups: {
+  RUN:  {name: 'runner', image: 'jluech/pga-cloud-runner', scaling: 1, messaging: 'generation'},
+  INIT: {name: 'initializer', image: 'jluech/pga-cloud-initializer', scaling: 2, messaging: 'initializer'},
+}
+
+
+# List all images of operators involved, including their initial scaling and messaging access (e.g., queue name for rabbitMQ).
+# Those in uppercase are predefined default operators.
+operators: {
+  SEL:  {name: 'selection', image: 'jluech/pga-cloud-selection', scaling: 1, messaging: 'selection'},
+  CO:   {name: 'crossover', image: 'jluech/pga-cloud-crossover', scaling: 1, messaging: 'crossover'},
+  MUT:  {name: 'mutation', image: 'jluech/pga-cloud-mutation', scaling: 1, messaging: 'mutation'},
+  FE:   {name: 'fitness', image: 'jluech/pga-cloud-fitness', scaling: 3, messaging: 'fitness'},
+}
+
+
+# Settings for providing an initial population.
+# Define your population only by the solution strings, like so:
+# individuals:
+# - "<solution string>"
+population: {
+  use_initial_population: False,
+  population_file_path: ''
+}
+
+
+# Properties for PGA execution.
+# Define at least the predefined ones (uppercase), but can also include custom properties for custom operators.
+# You can set USE_INIT=True to ensure deployment of INITs even if not used for generating the initial population.
+properties: {
+  USE_INIT: False,
+  MAX_GENERATIONS: 500,
+  MAX_UNIMPROVED_GENERATIONS: 300,
+  MAX_TIME_SECONDS: 1200,
+  POPULATION_SIZE: 100,
+  RANDOM_SEED: "",
+  MUTATION_RATE: 0.3,
+  CROSSOVER_RATE: 0.5,
+  ELITISM_RATE: 0.05,
+  knapsack_capacity: 150,
+  item_count: 30,
+  items_weights: [10, 22, 33, 17, 7, 14, 16, 24, 8, 12, 30, 21, 13, 44, 25, 6, 27, 18, 9, 40, 11, 28, 3, 14, 35, 26, 50, 18, 29, 10],
+  items_profits: [21, 35, 25, 17, 11, 21, 8, 10, 13, 18, 29, 23, 9, 33, 54, 22, 16, 31, 20, 37, 24, 28, 7, 19, 28, 3, 43, 26, 12, 14],
+}
+
+
+# Define here any custom file paths. Use the following scheme <unique_key>: '<file_path>'
+# Do NOT use the key "population" for it will be used by the initial population file defined above.
+# Also do NOT use the key "config", which will be used by this configuration file.
+custom_files: {
+
+}
