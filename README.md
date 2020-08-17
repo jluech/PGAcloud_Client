@@ -4,7 +4,7 @@ This specific repository contains the **local client**.
 
 ## Usage
 Download the repository and save it on your machine.
-In a terminal or shell window, navigate to the PGAcloud_Client repository.
+In a terminal or shell window, navigate to the *PGAcloud_Client* repository.
 To enable the Client's command-line interface, enter the following command: `. venv/Scripts/activate`
 
 You should see `(venv)` being displayed above the command prompt if successful.
